@@ -2,8 +2,10 @@
   "name": "ji-hvac-website",
   "version": "1.0.0",
   "description": "A simple web project for a family-owned HVAC business serving the GTA.",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,14 +13,16 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.52.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "nodemailer": "^7.0.5",
-    "pg": "^8.16.3",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-icons": "^5.5.0"
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
