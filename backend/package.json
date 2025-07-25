@@ -1,4 +1,7 @@
 {
+  "name": "ji-hvac-backend",
+  "version": "1.0.0",
+  "main": "app.js",
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js"
@@ -10,5 +13,8 @@
     "express": "^5.1.0",
     "nodemailer": "^7.0.5",
     "pg": "^8.16.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
