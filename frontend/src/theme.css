@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+  --color-primary: #183153;
+  --color-primary-gradient: linear-gradient(90deg, #183153 0%, #1976d2 100%);
+  --color-secondary: #ff9800;
+  --color-secondary-dark: #ff6f00;
+  --color-emergency: #dc3545;
+  --color-neutral-bg: #f5f5f5;
+  --color-neutral-card: #fff;
+  --color-gray: #e0e0e0;
+  --color-text: #222;
+  --color-text-light: #fff;
+  --color-shadow: 0 2px 8px rgba(24,49,83,0.08);
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Roboto', Arial, sans-serif;
+  background: var(--color-neutral-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+html, body {
+  width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', 'Roboto', Arial, sans-serif;
+  font-weight: 700;
+  margin-top: 0;
+  color: var(--color-primary);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover {
+  color: var(--color-secondary-dark);
+}
+
+.card {
+  background: var(--color-neutral-card);
+  border-radius: 12px;
+  box-shadow: var(--color-shadow);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+} 
