@@ -22,27 +22,30 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     
-    // 2. Send email notification
-    const { html, text } = formatContactEmail({ name, email, phone, address, message });
-    const emailResult = await sendEmail({
-      to: process.env.COMPANY_EMAIL,
-      subject: 'New Contact Form Submission - J.I. Heating and Cooling',
-      html,
-      text
-    });
+    // 2. Send email notification (async - don't wait for it)
+    const emailPromise = (async () => {
+      try {
+        const { html, text } = formatContactEmail({ name, email, phone, address, message });
+        const emailResult = await sendEmail({
+          to: process.env.COMPANY_EMAIL,
+          subject: 'New Contact Form Submission - J.I. Heating and Cooling',
+          html,
+          text
+        });
+        
+        if (!emailResult.success) {
+          console.warn('Email could not be sent but data was saved:', emailResult.error);
+        }
+      } catch (err) {
+        console.warn('Email sending failed:', err.message);
+      }
+    })();
     
-    if (!emailResult.success) {
-      console.warn('Email could not be sent but data was saved:', emailResult.error);
-    }
-    
+    // Return success immediately
     res.json({ 
       success: true,
-      message: emailResult.success 
-        ? 'Message sent successfully! We\'ll be in touch soon.' 
-        : 'Message sent successfully! We\'ve saved your information and will contact you soon.',
-      data,
-      emailSent: emailResult.success,
-      emailError: emailResult.authError ? 'Email notification failed due to server configuration. Your message was still saved.' : null
+      message: 'Message sent successfully! We\'ll be in touch soon.',
+      data
     });
   } catch (err) {
     console.error('Server error:', err);

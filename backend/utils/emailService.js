@@ -100,15 +100,15 @@ const sendEmail = async ({ to, subject, html, text }) => {
       lastError = error;
       console.error(`Email attempt ${attempt} failed:`, error.message);
       
-      // Don't retry authentication errors - they won't succeed
-      if (error.code === 'EAUTH' || error.responseCode === 535) {
-        console.error('Authentication failed - check your email credentials');
-        return { 
-          success: false, 
-          error: 'Email authentication failed. Please check your email credentials in the environment variables.',
-          authError: true 
-        };
-      }
+             // Don't retry authentication errors - they won't succeed
+       if (error.code === 'EAUTH' || error.responseCode === 535 || error.responseCode === 534) {
+         console.error('Authentication failed - check your email credentials');
+         return { 
+           success: false, 
+           error: 'Email authentication failed. Please check your email credentials in the environment variables.',
+           authError: true 
+         };
+       }
       
       if (attempt < maxRetries) {
         console.log(`Retrying in ${attempt * 2} seconds...`);
