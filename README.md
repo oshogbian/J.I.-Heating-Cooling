@@ -31,4 +31,4 @@ ji-hvac-website/
 - Product catalog
 
 ## Getting Started
-- See `frontend/` and `backend/` folders for setup instructions. 
+- See `frontend/` and `backend/` folders for setup instructions. # Force redeploy - Fri Jul 25 23:48:03 EDT 2025
