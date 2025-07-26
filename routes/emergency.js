@@ -56,9 +56,13 @@ router.post('/', async (req, res) => {
     }
     
     res.json({ 
-      message: 'Emergency request received, saved, and notification sent', 
+      success: true,
+      message: emailResult.success 
+        ? 'Emergency request submitted successfully! We\'ll respond to your emergency ASAP.' 
+        : 'Emergency request submitted successfully! We\'ve saved your information and will contact you immediately.',
       data,
-      emailSent: emailResult.success 
+      emailSent: emailResult.success,
+      emailError: emailResult.authError ? 'Email notification failed due to server configuration. Your emergency request was still saved.' : null
     });
   } catch (err) {
     console.error('Server error:', err);
