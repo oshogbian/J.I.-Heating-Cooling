@@ -18,7 +18,7 @@ router.post('/', async (req, res) => {
   } = req.body;
   
   try {
-    // 1. Save to Supabase
+    // 1. Save to Supabase (with all form data)
     const { data, error } = await supabase
       .from('emergency_requests')
       .insert([{ 
@@ -26,7 +26,8 @@ router.post('/', async (req, res) => {
         email,
         phone,
         address,
-        issue
+        issue,
+        contact_method: 'web_form'
       }]);
       
     if (error) {

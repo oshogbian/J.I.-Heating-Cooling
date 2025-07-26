@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 
-// Create a transporter using SMTP
+// Create a transporter using SMTP with better error handling and fallbacks
 const createTransporter = async () => {
   // Get the email domain to determine potential provider
   const emailUser = process.env.EMAIL_USER;
@@ -15,6 +15,10 @@ const createTransporter = async () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD,
     },
+    // Add timeout settings to prevent hanging connections
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000,   // 10 seconds
+    socketTimeout: 10000,     // 10 seconds
   };
   
   // Optional: Auto-detect common email providers based on domain
@@ -49,9 +53,14 @@ const createTransporter = async () => {
   
   const transporter = nodemailer.createTransport(config);
   
-  // Verify connection configuration
+  // Verify connection configuration with timeout
   try {
-    await transporter.verify();
+    await Promise.race([
+      transporter.verify(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Verification timeout')), 5000)
+      )
+    ]);
     console.log('SMTP connection verified successfully');
   } catch (error) {
     console.warn('SMTP verification failed:', error.message);
@@ -61,26 +70,55 @@ const createTransporter = async () => {
   return transporter;
 };
 
-// Send email function
+// Send email function with retry logic
 const sendEmail = async ({ to, subject, html, text }) => {
-  try {
-    const transporter = await createTransporter();
-    
-    const mailOptions = {
-      from: `"J.I. Heating and Cooling" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html,
-      text, // Plain text version for email clients that don't support HTML
-    };
-    
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Error sending email:', error);
-    return { success: false, error: error.message };
+  const maxRetries = 3;
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const transporter = await createTransporter();
+      
+      const mailOptions = {
+        from: `"J.I. Heating and Cooling" <${process.env.EMAIL_USER}>`,
+        to,
+        subject,
+        html,
+        text, // Plain text version for email clients that don't support HTML
+      };
+      
+      const info = await Promise.race([
+        transporter.sendMail(mailOptions),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Send timeout')), 15000)
+        )
+      ]);
+      
+      console.log('Email sent successfully:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      lastError = error;
+      console.error(`Email attempt ${attempt} failed:`, error.message);
+      
+      // Don't retry authentication errors - they won't succeed
+      if (error.code === 'EAUTH' || error.responseCode === 535) {
+        console.error('Authentication failed - check your email credentials');
+        return { 
+          success: false, 
+          error: 'Email authentication failed. Please check your email credentials in the environment variables.',
+          authError: true 
+        };
+      }
+      
+      if (attempt < maxRetries) {
+        console.log(`Retrying in ${attempt * 2} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+      }
+    }
   }
+  
+  console.error('All email attempts failed:', lastError);
+  return { success: false, error: lastError.message };
 };
 
 // Format contact form submission as HTML email

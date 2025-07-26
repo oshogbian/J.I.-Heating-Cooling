@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
   } = req.body;
   
   try {
-    // 1. Save to Supabase
+    // 1. Save to Supabase (with all form data)
     const { data, error } = await supabase
       .from('service_requests')
       .insert([{ 
@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
         address,
         service_type, 
         preferred_date, 
-        description 
+        message: description  // Using 'message' column (not 'description')
       }]);
       
     if (error) {

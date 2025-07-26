@@ -18,14 +18,13 @@ router.post('/', async (req, res) => {
   } = req.body;
   
   try {
-    // 1. Save to Supabase
+    // 1. Save to Supabase (without address since it's not in the schema)
     const { data, error } = await supabase
       .from('emergency_requests')
       .insert([{ 
         customer_info: name, 
         email,
         phone,
-        address,
         issue
       }]);
       
@@ -34,7 +33,7 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     
-    // 2. Send URGENT email notification
+    // 2. Send URGENT email notification (include address in email)
     const { html, text } = formatEmergencyEmail({ 
       name, 
       email, 
@@ -55,9 +54,13 @@ router.post('/', async (req, res) => {
     }
     
     res.json({ 
-      message: 'Emergency request received, saved, and notification sent', 
+      success: true,
+      message: emailResult.success 
+        ? 'Emergency request submitted successfully! We\'ll respond to your emergency ASAP.' 
+        : 'Emergency request submitted successfully! We\'ve saved your information and will contact you immediately.',
       data,
-      emailSent: emailResult.success 
+      emailSent: emailResult.success,
+      emailError: emailResult.authError ? 'Email notification failed due to server configuration. Your emergency request was still saved.' : null
     });
   } catch (err) {
     console.error('Server error:', err);

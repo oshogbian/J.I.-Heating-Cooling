@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaFan, FaSnowflake, FaWind } from 'react-icons/fa';
 
 function Services() {
-  const [form, setForm] = useState({ name: '', email: '', service_type: 'fan coil', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', service_type: 'fan coil', description: '' });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
 
@@ -10,19 +10,25 @@ function Services() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const [submissionMessage, setSubmissionMessage] = useState('');
+
   const handleSubmit = async e => {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch('http://localhost:5050/api/services', {
+      const res = await fetch('https://j-i-heating-cooling-2.onrender.com/api/services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      if (res.ok) {
+      
+      const result = await res.json();
+      
+      if (res.ok && result.success) {
+        setSubmissionMessage(result.message);
         setSubmitted(true);
       } else {
-        setError('There was an error. Please try again.');
+        setError(result.error || 'There was an error. Please try again.');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -30,7 +36,16 @@ function Services() {
   };
 
   if (submitted) {
-    return <div style={{ maxWidth: 800, margin: '2rem auto', background: 'var(--color-neutral-card)', borderRadius: 12, boxShadow: 'var(--color-shadow)', padding: '2rem', textAlign: 'center' }}><div>Thank you! We'll be in touch soon.</div></div>;
+    return (
+      <div style={{ maxWidth: 800, margin: '2rem auto', background: 'var(--color-neutral-card)', borderRadius: 12, boxShadow: 'var(--color-shadow)', padding: '2rem', textAlign: 'center' }}>
+        <div style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: '1.1rem', marginBottom: '1rem' }}>
+          ✅ {submissionMessage || 'Thank you! We\'ll be in touch soon.'}
+        </div>
+        <div style={{ color: '#666', fontSize: '0.9rem' }}>
+          Your service request has been submitted successfully.
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -82,8 +97,16 @@ function Services() {
             </select>
           </div>
           <div>
-            <label>Message:</label>
-            <textarea name="message" value={form.message} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem', marginBottom: 12, border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+            <label>Phone (optional):</label>
+            <input name="phone" type="tel" value={form.phone} onChange={handleChange} style={{ width: '100%', padding: '0.5rem', marginBottom: 12, border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+          </div>
+          <div>
+            <label>Address (optional):</label>
+            <input name="address" value={form.address} onChange={handleChange} style={{ width: '100%', padding: '0.5rem', marginBottom: 12, border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+          </div>
+          <div>
+            <label>Description:</label>
+            <textarea name="description" value={form.description} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem', marginBottom: 12, border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
           </div>
           <button type="submit" style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 4, padding: '0.75rem 1.5rem', fontSize: '1.1rem', fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s' }}>Request Quote</button>
         </form>

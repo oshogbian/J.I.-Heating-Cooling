@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 function ContactForm() {
-  const [form, setForm] = useState({ name: '', email: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
 
@@ -9,19 +9,25 @@ function ContactForm() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const [submissionMessage, setSubmissionMessage] = useState('');
+
   const handleSubmit = async e => {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch('http://localhost:5050/api/contact', {
+      const res = await fetch('https://j-i-heating-cooling-2.onrender.com/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      if (res.ok) {
+      
+      const result = await res.json();
+      
+      if (res.ok && result.success) {
+        setSubmissionMessage(result.message);
         setSubmitted(true);
       } else {
-        setError('There was an error. Please try again.');
+        setError(result.error || 'There was an error. Please try again.');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -29,7 +35,16 @@ function ContactForm() {
   };
 
   if (submitted) {
-    return <div style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', borderRadius: 12, boxShadow: 'var(--color-shadow)', padding: '2rem', textAlign: 'center', color: 'var(--color-primary)', fontWeight: 600 }}>Thank you! We'll be in touch soon.</div>;
+    return (
+      <div style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', borderRadius: 12, boxShadow: 'var(--color-shadow)', padding: '2rem', textAlign: 'center', color: 'var(--color-primary)', fontWeight: 600 }}>
+        <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+          ✅ {submissionMessage || 'Thank you! We\'ll be in touch soon.'}
+        </div>
+        <div style={{ fontSize: '0.9rem', color: '#666', fontWeight: 500 }}>
+          Your message has been sent successfully.
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -42,6 +57,14 @@ function ContactForm() {
       <div style={{ marginBottom: 14 }}>
         <label htmlFor="email" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Email:</label>
         <input id="email" name="email" type="email" value={form.email} onChange={handleChange} required style={{ width: '100%', padding: '0.7rem', border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <label htmlFor="phone" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Phone (optional):</label>
+        <input id="phone" name="phone" type="tel" value={form.phone} onChange={handleChange} style={{ width: '100%', padding: '0.7rem', border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <label htmlFor="address" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Address (optional):</label>
+        <input id="address" name="address" value={form.address} onChange={handleChange} style={{ width: '100%', padding: '0.7rem', border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
       </div>
       <div style={{ marginBottom: 18 }}>
         <label htmlFor="message" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Message:</label>

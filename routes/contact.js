@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
   const { name, email, phone = '', address = '', message = '' } = req.body;
   
   try {
-    // 1. Save to Supabase
+    // 1. Save to Supabase (with all form data including message)
     const { data, error } = await supabase
       .from('customers')
       .insert([{ name, email, phone, address, message }]);
