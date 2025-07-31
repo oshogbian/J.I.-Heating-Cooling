@@ -7,6 +7,8 @@ import Services from './pages/Services';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Emergency from './pages/Emergency';
+import InvoiceGenerator from './pages/InvoiceGenerator';
+import Login from './pages/Login';
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/emergency" element={<Emergency />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/invoices" element={<InvoiceGenerator />} />
         </Routes>
       </main>
       <Footer />

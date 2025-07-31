@@ -8,6 +8,8 @@ const cors = require('cors');
 const contactRoutes = require('./routes/contact');
 const servicesRoutes = require('./routes/services');
 const emergencyRoutes = require('./routes/emergency');
+const { router: authRoutes } = require('./routes/auth');
+const invoiceRoutes = require('./routes/invoices');
 
 const app = express();
 app.use(cors({
@@ -19,6 +21,8 @@ app.use(express.json());
 app.use('/api/contact', contactRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/emergency', emergencyRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 app.get('/', (req, res) => {
   res.send('J.I. Heating and Cooling API');

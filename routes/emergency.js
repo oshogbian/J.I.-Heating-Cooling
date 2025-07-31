@@ -1,12 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { createClient } = require('@supabase/supabase-js');
 const { sendEmail, formatEmergencyEmail } = require('../utils/emailService');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Initialize Supabase only if environment variables are set
+let supabase = null;
+try {
+  const { createClient } = require('@supabase/supabase-js');
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+} catch (error) {
+  console.warn('Supabase not configured, running without database storage');
+}
 
 router.post('/', async (req, res) => {
   const { 
@@ -18,21 +26,34 @@ router.post('/', async (req, res) => {
   } = req.body;
   
   try {
-    // 1. Save to Supabase (with all form data)
-    const { data, error } = await supabase
-      .from('emergency_requests')
-      .insert([{ 
-        customer_info: name, 
-        email,
-        phone,
+    // 1. Save to Supabase if configured
+    let data = null;
+    if (supabase) {
+      const { data: supabaseData, error } = await supabase
+        .from('emergency_requests')
+        .insert([{ 
+          customer_info: name, 
+          email,
+          phone,
+          address,
+          issue,
+          contact_method: 'web_form'
+        }]);
+        
+      if (error) {
+        console.error('Supabase error:', error);
+        // Continue without database storage
+      } else {
+        data = supabaseData;
+      }
+    } else {
+      console.log('Emergency request submission (no database):', { 
+        name, 
+        email, 
+        phone, 
         address,
-        issue,
-        contact_method: 'web_form'
-      }]);
-      
-    if (error) {
-      console.error('Supabase error:', error);
-      return res.status(500).json({ error: error.message });
+        issue 
+      });
     }
     
     // 2. Send URGENT email notification
