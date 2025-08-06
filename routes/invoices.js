@@ -463,85 +463,222 @@ router.get('/:id/pdf', async (req, res) => {
       });
     }
 
-    // Create a simple HTML invoice that can be printed as PDF
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Invoice ${invoice.invoice_number}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .company-info { margin-bottom: 20px; }
-          .invoice-details { margin-bottom: 30px; }
-          .customer-info { margin-bottom: 30px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          .totals { text-align: right; }
-          .footer { margin-top: 40px; text-align: center; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>INVOICE</h1>
-          <h2>J-I Heating & Cooling</h2>
-          <p>Toronto, ON<br>Phone: (416) 555-0123<br>Email: info@ji-hvac.com</p>
-        </div>
-        
-        <div class="invoice-details">
-          <strong>Invoice #:</strong> ${invoice.invoice_number}<br>
-          <strong>Date:</strong> ${new Date(invoice.created_at || invoice.createdAt || Date.now()).toLocaleDateString()}<br>
-          <strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}
-        </div>
-        
-        <div class="customer-info">
-          <strong>Bill To:</strong><br>
-          ${invoice.customer_name}<br>
-          ${invoice.customer_email}<br>
-          ${invoice.customer_phone || ''}<br>
-          ${invoice.customer_address || ''}
-        </div>
-        
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Quantity</th>
-              <th>Unit Price</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${invoice.items ? invoice.items.map(item => `
-              <tr>
-                <td>${item.description}</td>
-                <td>${item.quantity}</td>
-                <td>$${item.unit_price}</td>
-                <td>$${(item.quantity * item.unit_price).toFixed(2)}</td>
-              </tr>
-            `).join('') : ''}
-          </tbody>
-        </table>
-        
-        <div class="totals">
-          <p><strong>Subtotal:</strong> $${invoice.subtotal || 0}</p>
-          <p><strong>Tax (${invoice.tax_rate || 0}%):</strong> $${invoice.tax_amount || 0}</p>
-          <p><strong>Total:</strong> $${invoice.total_amount || 0}</p>
-        </div>
-        
-        <div class="footer">
-          <p>Payment Terms: ${invoice.payment_terms || 'Net 30'}</p>
-          ${invoice.notes ? `<p><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
-        </div>
-      </body>
-      </html>
-    `;
+    // Import PDFKit for PDF generation
+    const PDFDocument = require('pdfkit');
+    const fs = require('fs');
+    const path = require('path');
+
+    // Create PDF with better margins
+    const doc = new PDFDocument({ 
+      margin: 40,
+      size: 'A4'
+    });
     
-    // Set headers for PDF download
-    res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Content-Disposition', `attachment; filename="invoice-${invoice.invoice_number}.html"`);
-    res.send(html);
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="invoice-${invoice.invoice_number}.pdf"`);
+
+    // Pipe PDF to response
+    doc.pipe(res);
+
+    // Define colors
+    const primaryColor = '#183153';
+    const secondaryColor = '#ff9800';
+    const lightGray = '#f8f9fa';
+
+    // Add logo if available
+    const logoPath = path.join(__dirname, '../frontend/public/logo.png');
+    const altLogoPath = path.join(process.cwd(), 'frontend/public/logo.png');
+    
+    let logoAdded = false;
+    if (fs.existsSync(logoPath)) {
+      try {
+        doc.image(logoPath, 40, 40, { width: 80, height: 80 });
+        logoAdded = true;
+        console.log('Logo added from relative path');
+      } catch (error) {
+        console.log('Logo not added from relative path:', error.message);
+      }
+    }
+    
+    if (!logoAdded && fs.existsSync(altLogoPath)) {
+      try {
+        doc.image(altLogoPath, 40, 40, { width: 80, height: 80 });
+        logoAdded = true;
+        console.log('Logo added from absolute path');
+      } catch (error) {
+        console.log('Logo not added from absolute path:', error.message);
+      }
+    }
+    
+    if (!logoAdded) {
+      console.log('Logo file not found at either path');
+    }
+
+    // Create a professional PDF that matches the view version exactly
+    
+    // Header with gradient background (simulated with colored rectangles)
+    const headerHeight = 120;
+    doc.rect(0, 0, 595, headerHeight).fill(primaryColor);
+    
+    // Logo in header
+    if (logoAdded) {
+      doc.image(logoPath, 40, 30, { width: 50, height: 50 });
+    }
+    
+    // INVOICE title in header
+    doc.fontSize(36).font('Helvetica-Bold').fillColor('#fff').text('INVOICE', 200, 40);
+    doc.fontSize(16).font('Helvetica').fillColor('#fff').text(`#${invoice.invoice_number}`, 200, 85);
+    
+    // Status badge removed as requested
+    
+    // Content area
+    const contentY = headerHeight + 40;
+    
+    // Two-column layout for company and customer info
+    const leftColumnX = 40;
+    const rightColumnX = 350;
+    
+    // Left column - From section
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(primaryColor).text('From', leftColumnX, contentY);
+    doc.rect(leftColumnX, contentY + 20, 280, 80).fillAndStroke('#f8f9fa', '#e0e0e0');
+    
+    const companyInfo = invoice.company_info || {
+      name: 'J.I. Heating & Cooling',
+      address: 'Serving the GTA',
+      phone: '+1 416 997 9123',
+      email: 'sam@jiheatingandcooling.org'
+    };
+    
+    doc.fontSize(14).font('Helvetica-Bold').fillColor(primaryColor).text(companyInfo.name, leftColumnX + 15, contentY + 35);
+    doc.fontSize(11).font('Helvetica').fillColor('#666').text(companyInfo.address, leftColumnX + 15, contentY + 55);
+    doc.text(`Phone: ${companyInfo.phone}`, leftColumnX + 15, contentY + 70);
+    doc.text(`Email: ${companyInfo.email}`, leftColumnX + 15, contentY + 85);
+    
+    // Right column - Bill To section
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(primaryColor).text('Bill To', rightColumnX, contentY);
+    doc.rect(rightColumnX, contentY + 20, 280, 80).fillAndStroke('#f8f9fa', '#e0e0e0');
+    
+    doc.fontSize(14).font('Helvetica-Bold').fillColor(primaryColor).text(invoice.customer_name, rightColumnX + 15, contentY + 35);
+    if (invoice.customer_email) doc.fontSize(11).font('Helvetica').fillColor('#666').text(invoice.customer_email, rightColumnX + 15, contentY + 55);
+    if (invoice.customer_phone) doc.text(invoice.customer_phone, rightColumnX + 15, contentY + 70);
+    if (invoice.customer_address) doc.text(invoice.customer_address, rightColumnX + 15, contentY + 85);
+    
+    // Invoice details section
+    const detailsY = contentY + 140;
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(primaryColor).text('Invoice Details', leftColumnX, detailsY);
+    
+    // Three-column layout for invoice details
+    const detailCol1X = leftColumnX;
+    const detailCol2X = leftColumnX + 180;
+    const detailCol3X = leftColumnX + 360;
+    
+    doc.fontSize(10).font('Helvetica').fillColor('#666').text('Invoice Date', detailCol1X, detailsY + 25);
+    doc.fontSize(12).font('Helvetica-Bold').fillColor(primaryColor).text(new Date(invoice.created_at || invoice.createdAt || Date.now()).toLocaleDateString(), detailCol1X, detailsY + 40);
+    
+    doc.fontSize(10).font('Helvetica').fillColor('#666').text('Due Date', detailCol2X, detailsY + 25);
+    doc.fontSize(12).font('Helvetica-Bold').fillColor(primaryColor).text(new Date(invoice.due_date).toLocaleDateString(), detailCol2X, detailsY + 40);
+    
+    doc.fontSize(10).font('Helvetica').fillColor('#666').text('Payment Terms', detailCol3X, detailsY + 25);
+    doc.fontSize(12).font('Helvetica-Bold').fillColor(primaryColor).text(invoice.payment_terms || 'Net 30', detailCol3X, detailsY + 40);
+    
+    // Items section - Fixed positioning
+    const itemsY = detailsY + 80;
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(primaryColor).text('Items', leftColumnX, itemsY);
+    
+    // Items table with professional styling - Fixed positioning
+    const tableStartY = itemsY + 30;
+    const tableWidth = 520;
+    const col1Width = 250; // Description
+    const col2Width = 60;  // Quantity
+    const col3Width = 80;  // Unit Price
+    const col4Width = 80;  // Total
+    
+    // Table header with gradient background
+    doc.rect(leftColumnX, tableStartY, tableWidth, 30).fillAndStroke('#f8f9fa', '#dee2e6');
+    doc.fontSize(11).font('Helvetica-Bold').fillColor(primaryColor).text('Description', leftColumnX + 10, tableStartY + 10);
+    doc.text('Qty', leftColumnX + col1Width, tableStartY + 10);
+    doc.text('Unit Price', leftColumnX + col1Width + col2Width, tableStartY + 10);
+    doc.text('Total', leftColumnX + col1Width + col2Width + col3Width, tableStartY + 10);
+    
+    // Items rows
+    let tableY = tableStartY + 30;
+    doc.fontSize(10).font('Helvetica').fillColor('#333');
+    
+    console.log('Invoice items:', invoice.items);
+    if (invoice.items && Array.isArray(invoice.items)) {
+      invoice.items.forEach((item, index) => {
+        console.log('Processing item:', item);
+        const rowHeight = 25;
+        const bgColor = index % 2 === 0 ? '#fff' : '#fafafa';
+        
+        // Row background
+        doc.rect(leftColumnX, tableY, tableWidth, rowHeight).fillAndStroke(bgColor, '#f0f0f0');
+        
+        // Item details with proper alignment and debugging
+        const description = item.description || '';
+        const quantity = (item.quantity || 0).toString();
+        const unitPrice = `$${parseFloat(item.unit_price || 0).toFixed(2)}`;
+        const total = `$${(parseFloat(item.quantity || 0) * parseFloat(item.unit_price || 0)).toFixed(2)}`;
+        
+        console.log('Rendering item:', { description, quantity, unitPrice, total });
+        console.log('Table position:', { tableY, leftColumnX, col1Width });
+        
+        // Ensure text is within page bounds
+        const maxWidth = 595 - 40; // Page width minus margins
+        if (tableWidth <= maxWidth) {
+          doc.text(description, leftColumnX + 10, tableY + 8);
+          doc.text(quantity, leftColumnX + col1Width, tableY + 8);
+          doc.text(unitPrice, leftColumnX + col1Width + col2Width, tableY + 8);
+          doc.text(total, leftColumnX + col1Width + col2Width + col3Width, tableY + 8);
+        } else {
+          console.log('Table too wide, adjusting columns');
+          // Fallback with smaller columns
+          doc.text(description, leftColumnX + 10, tableY + 8);
+          doc.text(quantity, leftColumnX + 200, tableY + 8);
+          doc.text(unitPrice, leftColumnX + 250, tableY + 8);
+          doc.text(total, leftColumnX + 350, tableY + 8);
+        }
+        
+        tableY += rowHeight;
+      });
+    } else {
+      console.log('Items not found or not an array:', invoice.items);
+    }
+    
+    // Summary section
+    const summaryY = tableY + 30;
+    const summaryX = leftColumnX + 300;
+    const summaryWidth = 220;
+    
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(primaryColor).text('Summary', summaryX, summaryY);
+    doc.rect(summaryX, summaryY + 20, summaryWidth, 100).fillAndStroke('#f8f9fa', '#e0e0e0');
+    
+    // Summary calculations
+    const summaryContentY = summaryY + 35;
+    doc.fontSize(11).font('Helvetica').fillColor('#666').text('Subtotal:', summaryX + 15, summaryContentY);
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#333').text(`$${parseFloat(invoice.subtotal || 0).toFixed(2)}`, summaryX + 120, summaryContentY);
+    
+    doc.fontSize(11).font('Helvetica').fillColor('#666').text(`Tax (${invoice.tax_rate || 0}%):`, summaryX + 15, summaryContentY + 20);
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#333').text(`$${parseFloat(invoice.tax_amount || 0).toFixed(2)}`, summaryX + 120, summaryContentY + 20);
+    
+    // Total with emphasis
+    doc.fontSize(13).font('Helvetica-Bold').fillColor(primaryColor).text('Total:', summaryX + 15, summaryContentY + 50);
+    doc.fontSize(13).font('Helvetica-Bold').fillColor(primaryColor).text(`$${parseFloat(invoice.total_amount || 0).toFixed(2)}`, summaryX + 120, summaryContentY + 50);
+    
+    // Notes section (if exists)
+    if (invoice.notes) {
+      const notesY = summaryY + 120;
+      doc.fontSize(16).font('Helvetica-Bold').fillColor(primaryColor).text('Notes', leftColumnX, notesY);
+      doc.rect(leftColumnX, notesY + 20, 280, 80).fillAndStroke('#f8f9fa', '#e0e0e0');
+      doc.fontSize(11).font('Helvetica').fillColor('#333').text(invoice.notes, leftColumnX + 15, notesY + 35);
+    }
+    
+    // Footer
+    const footerY = 750;
+    doc.fontSize(10).font('Helvetica').fillColor('#999').text('Thank you for your business!', { align: 'center' });
+
+    doc.end();
   } catch (error) {
     console.error('Error generating PDF:', error);
     res.status(500).json({

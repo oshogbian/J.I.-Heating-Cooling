@@ -104,7 +104,7 @@ async function testEmailConfigurations() {
       try {
         const info = await transporter.sendMail({
           from: `"Test" <${process.env.EMAIL_USER}>`,
-          to: process.env.COMPANY_EMAIL || 'test@example.com',
+          to: process.env.COMPANY_EMAIL || 'sam@jiheatingandcooling.org',
           subject: 'Email Configuration Test',
           text: 'This is a test email to verify your SMTP configuration is working.',
           html: '<h1>Test Email</h1><p>This is a test email to verify your SMTP configuration is working.</p>'

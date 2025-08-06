@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import config from '../config';
 
 function Emergency() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', issue: '' });
@@ -15,19 +16,28 @@ function Emergency() {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch('https://j-i-heating-cooling-2.onrender.com/api/emergency', {
+      const res = await fetch(`${config.SUPABASE_URL}/rest/v1/emergency_requests`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        headers: { 
+          'Content-Type': 'application/json',
+                  'apikey': config.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${config.SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          customer_info: form.name,
+          email: form.email,
+          phone: form.phone,
+          address: form.address,
+          issue: form.issue
+        }),
       });
       
-      const result = await res.json();
-      
-      if (res.ok && result.success) {
-        setSubmissionMessage(result.message);
+      if (res.ok) {
+        setSubmissionMessage('Thank you! We\'ll respond to your emergency ASAP.');
         setSubmitted(true);
       } else {
-        setError(result.error || 'There was an error. Please try again.');
+        setError('There was an error. Please try again.');
       }
     } catch (err) {
       setError('Network error. Please try again.');

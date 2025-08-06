@@ -6,12 +6,30 @@
   --color-secondary: #ff9800;
   --color-secondary-dark: #ff6f00;
   --color-emergency: #dc3545;
-  --color-neutral-bg: #f5f5f5;
-  --color-neutral-card: #fff;
+  --color-neutral-bg: #ffffff;
+  --color-neutral-card: #ffffff;
   --color-gray: #e0e0e0;
-  --color-text: #222;
-  --color-text-light: #fff;
+  --color-text: #333333;
+  --color-text-light: #ffffff;
+  --color-text-dark: #000000;
+  --color-text-muted: #666666;
   --color-shadow: 0 2px 8px rgba(24,49,83,0.08);
+  --color-border: #d1d5db;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+}
+
+/* Mobile-first base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 body {
@@ -20,41 +38,347 @@ body {
   background: var(--color-neutral-bg);
   color: var(--color-text);
   min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html, body {
-  width: 100vw;
+  width: 100%;
   overflow-x: hidden;
-  box-sizing: border-box;
-}
-*, *:before, *:after {
-  box-sizing: inherit;
 }
 
+/* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Inter', 'Roboto', Arial, sans-serif;
   font-weight: 700;
   margin-top: 0;
   color: var(--color-primary);
+  line-height: 1.2;
 }
 
+h1 { font-size: clamp(1.75rem, 4vw, 2.8rem); }
+h2 { font-size: clamp(1.5rem, 3.5vw, 2.5rem); }
+h3 { font-size: clamp(1.25rem, 3vw, 2rem); }
+h4 { font-size: clamp(1.1rem, 2.5vw, 1.5rem); }
+
+p {
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  color: var(--color-text);
+}
+
+/* Links */
 a {
   color: var(--color-primary);
   text-decoration: none;
   transition: color 0.2s;
 }
+
 a:hover {
   color: var(--color-secondary-dark);
 }
 
+/* Cards */
 .card {
   background: var(--color-neutral-card);
   border-radius: 12px;
   box-shadow: var(--color-shadow);
-  padding: 2rem;
+  padding: clamp(1rem, 4vw, 2rem);
   margin-bottom: 2rem;
+  width: 100%;
+  border: 1px solid var(--color-border);
 }
 
+/* Form elements */
 input, select, textarea, button {
   font-family: inherit;
-} 
+  font-size: 16px; /* Prevents zoom on iOS */
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  padding: 0.75rem;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: var(--color-text);
+  background: #ffffff;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(24, 49, 83, 0.1);
+}
+
+button {
+  cursor: pointer;
+  font-weight: 600;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  padding: 0.875rem 1.5rem;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+button:hover {
+  background: var(--color-secondary-dark);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Labels - ensure they're visible */
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+/* Table styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+th {
+  background: #f8f9fa;
+  color: var(--color-text);
+  font-weight: 600;
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+td {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  color: var(--color-text);
+}
+
+/* Status badges */
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-paid {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-overdue {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-draft {
+  background: #fff3cd;
+  color: #856404;
+}
+
+/* Responsive containers */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 4vw, 2rem);
+}
+
+/* Grid system */
+.grid {
+  display: grid;
+  gap: clamp(1rem, 3vw, 2rem);
+}
+
+.grid-1 { grid-template-columns: 1fr; }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+
+/* Flexbox utilities */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
+.gap-8 { gap: 2rem; }
+
+/* Spacing utilities */
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 0.75rem; }
+.p-4 { padding: 1rem; }
+.p-6 { padding: 1.5rem; }
+.p-8 { padding: 2rem; }
+
+.m-1 { margin: 0.25rem; }
+.m-2 { margin: 0.5rem; }
+.m-3 { margin: 0.75rem; }
+.m-4 { margin: 1rem; }
+.m-6 { margin: 1.5rem; }
+.m-8 { margin: 2rem; }
+
+/* Text utilities */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+.text-2xl { font-size: 1.5rem; }
+
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Reduce padding on mobile */
+  .card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* Better button sizing on mobile */
+  button {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    min-height: 44px; /* Better touch target */
+  }
+  
+  /* Improve form spacing on mobile */
+  form {
+    padding: 1rem;
+  }
+  
+  /* Better input sizing on mobile */
+  input, select, textarea {
+    padding: 0.875rem;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Improve video sizing */
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Better image handling */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Tablet improvements */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .container {
+    padding: 0 2rem;
+  }
+  
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop improvements */
+@media (min-width: 1025px) {
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Large screen optimizations */
+@media (min-width: 1440px) {
+  .container {
+    max-width: 1400px;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --color-primary: #000;
+    --color-text: #000;
+    --color-gray: #333;
+  }
+}
+
+/* Dark mode support - Disabled for business website */
+/* @media (prefers-color-scheme: dark) {
+  :root {
+    --color-neutral-bg: #1a1a1a;
+    --color-neutral-card: #2d2d2d;
+    --color-text: #ffffff;
+    --color-gray: #444;
+  }
+} */ 

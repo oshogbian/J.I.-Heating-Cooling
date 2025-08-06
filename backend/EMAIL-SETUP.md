@@ -30,7 +30,7 @@ Similar process - you may need to create an app password in your Microsoft accou
 
 The system will try to auto-detect the correct email server settings based on the email domain, but you can also set them manually:
 
-For business emails (like SAM@jiheatingandcooling.com), common settings are:
+For business emails (like sam@jiheatingandcooling.org), common settings are:
 
 ```
 EMAIL_HOST=mail.jiheatingandcooling.com
@@ -47,7 +47,7 @@ If auto-detection doesn't work, you might need to contact your email/hosting pro
 node test-email.js
 ```
 
-2. Check the email account (SAM@jiheatingandcooling.com) to confirm receipt of the test email.
+2. Check the email account (sam@jiheatingandcooling.org) to confirm receipt of the test email.
 3. If you don't receive the email, check your spam/junk folder.
 
 ## Troubleshooting

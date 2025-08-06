@@ -5,13 +5,14 @@
   "targets": {
     "jiheatingcooling": {
       "hosting": {
-        "main": [
-          "jiheatingcooling"
-        ],
         "jiheatingandcooling": [
-          "jiheatingandcooling-site"
+          "jiheatingandcooling"
+        ],
+        "jiheatingcooling": [
+          "jiheatingcooling"
         ]
       }
     }
-  }
+  },
+  "etags": {}
 }

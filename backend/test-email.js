@@ -4,7 +4,7 @@ const { sendEmail, formatContactEmail } = require('./utils/emailService');
 // Test data
 const testData = {
   name: 'Test Customer',
-  email: 'test@example.com',
+  email: 'sam@jiheatingandcooling.org',
   phone: '555-123-4567',
   address: '123 Main St, Anytown USA',
   message: 'This is a test message to verify email functionality.'

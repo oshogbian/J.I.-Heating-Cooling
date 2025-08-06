@@ -3,10 +3,22 @@ const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { sendEmail, formatServiceEmail } = require('../utils/emailService');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Initialize Supabase client only if environment variables are available
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && 
+    process.env.SUPABASE_URL !== 'your_supabase_url_here') {
+  try {
+    supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  } catch (error) {
+    console.warn('Supabase client initialization failed:', error.message);
+    supabase = null;
+  }
+} else {
+  console.log('Supabase not configured, running without database storage');
+}
 
 router.post('/', async (req, res) => {
   const { 
@@ -20,23 +32,37 @@ router.post('/', async (req, res) => {
   } = req.body;
   
   try {
-    // 1. Save to Supabase
-    const { data, error } = await supabase
-      .from('service_requests')
-      .insert([{ 
-        customer_id: null, 
-        name,
-        email,
-        phone,
+    // 1. Save to Supabase (if available)
+    let data = null;
+    if (supabase) {
+      const { data: supabaseData, error } = await supabase
+        .from('service_requests')
+        .insert([{ 
+          customer_id: null, 
+          name,
+          email,
+          phone,
+          address,
+          service_type, 
+          preferred_date, 
+          description 
+        }]);
+        
+      if (error) {
+        console.error('Supabase error:', error);
+        return res.status(500).json({ error: error.message });
+      }
+      data = supabaseData;
+    } else {
+      console.log('Service request submission (no database):', { 
+        name, 
+        email, 
+        phone, 
         address,
-        service_type, 
-        preferred_date, 
+        service_type,
+        preferred_date,
         description 
-      }]);
-      
-    if (error) {
-      console.error('Supabase error:', error);
-      return res.status(500).json({ error: error.message });
+      });
     }
     
     // 2. Send email notification

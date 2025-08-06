@@ -14,9 +14,9 @@ function Footer() {
       fontSize: '1.1rem',
       marginTop: '3rem',
     }}>
-      <div style={{ fontWeight: 600, fontSize: '1.2rem', marginBottom: 8 }}>Contact: <a href="tel:+14169979123" style={{ color: '#ff9800', textDecoration: 'none', fontWeight: 700 }}>+1 416 997 9123</a> | <a href="mailto:SAM@jiheatingandcooling.com" style={{ color: '#ff9800', textDecoration: 'none', fontWeight: 700 }}>SAM@jiheatingandcooling.com</a></div>
+      <div style={{ fontWeight: 600, fontSize: '1.2rem', marginBottom: 8 }}>Contact: <a href="tel:+14169979123" style={{ color: '#ff9800', textDecoration: 'none', fontWeight: 700 }}>+1 416 997 9123</a> | <a href="mailto:sam@jiheatingandcooling.org" style={{ color: '#ff9800', textDecoration: 'none', fontWeight: 700 }}>sam@jiheatingandcooling.org</a></div>
       <div style={{ marginBottom: 8 }}>Serving the GTA | Family Owned Since 2015</div>
-      <div style={{ fontSize: '0.95rem', color: '#b0b0b0' }}>&copy; {new Date().getFullYear()} J.I. Heating & Cooling</div>
+      <div style={{ fontSize: '0.95rem', color: '#d0d0d0' }}>&copy; {new Date().getFullYear()} J.I. Heating & Cooling</div>
     </footer>
   );
 }

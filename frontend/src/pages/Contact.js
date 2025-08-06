@@ -15,15 +15,20 @@ function Contact() {
         marginBottom: '2rem',
         textAlign: 'center',
       }}>
-        <h2 style={{ fontWeight: 700, fontSize: '2.1rem', marginBottom: 16 }}>Contact Us</h2>
+        <h2 style={{ fontWeight: 700, fontSize: '2.1rem', marginBottom: 16 }}>Get Your Free Consultation Today</h2>
+        <p style={{ fontSize: '1.1rem', color: '#666', marginBottom: '2rem', lineHeight: 1.6 }}>
+          Ready to transform your condo's comfort? Contact us for a free consultation and discover how we can improve your comfort, air quality, and energy efficiency.
+        </p>
         <div style={{ fontSize: '1.15rem', marginBottom: 10 }}>
           <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Phone:</span> <a href="tel:+14169979123" style={{ color: 'var(--color-secondary)', fontWeight: 700, textDecoration: 'none' }}>+1 416 997 9123</a>
         </div>
         <div style={{ fontSize: '1.15rem', marginBottom: 10 }}>
-          <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Email:</span> <a href="mailto:SAM@jiheatingandcooling.com" style={{ color: 'var(--color-secondary)', fontWeight: 700, textDecoration: 'none' }}>SAM@jiheatingandcooling.com</a>
+          <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Email:</span> <a href="mailto:sam@jiheatingandcooling.org" style={{ color: 'var(--color-secondary)', fontWeight: 700, textDecoration: 'none' }}>sam@jiheatingandcooling.org</a>
         </div>
-        <div style={{ fontSize: '1.1rem', color: 'var(--color-primary)', marginBottom: 10 }}>Service Area: GTA</div>
-        <div style={{ color: '#b0b0b0', fontSize: '1rem', marginBottom: 18 }}>Direct to owner, no call centers</div>
+        <div style={{ fontSize: '1.1rem', color: 'var(--color-primary)', marginBottom: 10 }}>
+          <strong>Service Area:</strong> Toronto, North York, Etobicoke, Scarborough, Mississauga, and the Greater Toronto Area
+        </div>
+        <div style={{ color: '#666666', fontSize: '1rem', marginBottom: 18 }}>Direct to owner, Sam. No call centers, no runaround—just real help when you need it.</div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 10 }}>
           <a href="https://facebook.com/jiheatingandcooling" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
             <FaFacebook size={32} color="#1877f3" style={{ transition: 'transform 0.2s' }} />
@@ -39,6 +44,48 @@ function Contact() {
           </a>
         </div>
       </div>
+
+      {/* Business Hours & Emergency Services */}
+      <div style={{
+        background: 'linear-gradient(135deg, var(--color-primary), #1a365d)',
+        borderRadius: '15px',
+        padding: '2rem',
+        margin: '2rem auto',
+        color: '#fff',
+        textAlign: 'center'
+      }}>
+        <h3 style={{ fontSize: '1.5rem', fontWeight: 600, margin: '0 0 1.5rem 0', color: '#fff' }}>
+          Business Hours & Emergency Services
+        </h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '2rem',
+          marginTop: '1rem'
+        }}>
+          <div>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: '#fff' }}>
+              Regular Business Hours
+            </h4>
+            <p style={{ fontSize: '0.95rem', color: '#fff', lineHeight: 1.6, opacity: 0.9 }}>
+              Monday - Friday: 8:00 AM - 6:00 PM<br />
+              Saturday: 9:00 AM - 4:00 PM<br />
+              Sunday: Emergency Services Only
+            </p>
+          </div>
+          <div>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: '#fff' }}>
+              24/7 Emergency Services
+            </h4>
+            <p style={{ fontSize: '0.95rem', color: '#fff', lineHeight: 1.6, opacity: 0.9 }}>
+              Available for urgent HVAC issues<br />
+              Rapid response times<br />
+              Same-day service when possible
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div style={{
         background: 'rgba(255,255,255,0.85)',
         backdropFilter: 'blur(10px)',

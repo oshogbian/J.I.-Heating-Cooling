@@ -9,6 +9,9 @@ import Contact from './pages/Contact';
 import Emergency from './pages/Emergency';
 import InvoiceGenerator from './pages/InvoiceGenerator';
 import Login from './pages/Login';
+import FanCoilService from './pages/FanCoilService';
+import HeatPumpService from './pages/HeatPumpService';
+import VentCleaningService from './pages/VentCleaningService';
 
 function App() {
   return (
@@ -23,6 +26,9 @@ function App() {
           <Route path="/emergency" element={<Emergency />} />
           <Route path="/login" element={<Login />} />
           <Route path="/invoices" element={<InvoiceGenerator />} />
+          <Route path="/fan-coil-service" element={<FanCoilService />} />
+          <Route path="/heat-pump-service" element={<HeatPumpService />} />
+          <Route path="/vent-cleaning-service" element={<VentCleaningService />} />
         </Routes>
       </main>
       <Footer />
