@@ -15,13 +15,20 @@ function Emergency() {
   const handleSubmit = async e => {
     e.preventDefault();
     setError(null);
+    
+    console.log('Emergency form submission - Config:', {
+      SUPABASE_URL: config.SUPABASE_URL,
+      SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
+      formData: form
+    });
+    
     try {
       const res = await fetch(`${config.SUPABASE_URL}/rest/v1/emergency_requests`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-                  'apikey': config.SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${config.SUPABASE_ANON_KEY}`,
+          'apikey': config.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${config.SUPABASE_ANON_KEY}`,
           'Prefer': 'return=representation'
         },
         body: JSON.stringify({
@@ -33,13 +40,22 @@ function Emergency() {
         }),
       });
       
+      console.log('Emergency form response:', {
+        status: res.status,
+        statusText: res.statusText,
+        ok: res.ok
+      });
+      
       if (res.ok) {
         setSubmissionMessage('Thank you! We\'ll respond to your emergency ASAP.');
         setSubmitted(true);
       } else {
+        const errorText = await res.text();
+        console.error('Emergency form error response:', errorText);
         setError('There was an error. Please try again.');
       }
     } catch (err) {
+      console.error('Emergency form network error:', err);
       setError('Network error. Please try again.');
     }
   };

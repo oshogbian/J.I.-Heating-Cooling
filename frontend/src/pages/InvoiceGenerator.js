@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaTrash, FaDownload, FaEye, FaEdit, FaSignOutAlt, FaPrint } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaDownload, FaEye, FaEdit, FaSignOutAlt, FaPrint, FaListUl } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
 import jsPDF from 'jspdf';
@@ -23,7 +23,7 @@ function InvoiceGenerator() {
     tax_rate: 13,
     notes: '',
     payment_terms: 'Net 30',
-    items: [{ description: '', quantity: 1, unit_price: 0 }]
+    items: [{ description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
   });
 
   // Company info
@@ -32,7 +32,10 @@ function InvoiceGenerator() {
     address: 'Serving the GTA',
     phone: '+1 (416) 997-9123',
     email: 'sam@jiheatingandcooling.org',
-    website: 'www.jiheatingandcooling.org'
+    website: 'www.jiheatingandcooling.org',
+    hst_number: 'HST #123456789 RT0001',
+    warranty_info: 'All work guaranteed for 1 year',
+    payment_instructions: 'Payment accepted via e-transfer, cheque, or cash'
   };
 
   // Check if user is authenticated
@@ -95,6 +98,7 @@ function InvoiceGenerator() {
       console.log('Fetching invoices from:', `${config.SUPABASE_URL}/rest/v1/invoices?select=*`);
       
       // Fetch invoices with their items
+      console.log('Fetching invoices from:', `${config.SUPABASE_URL}/rest/v1/invoices?select=*`);
       const response = await fetch(`${config.SUPABASE_URL}/rest/v1/invoices?select=*`, {
         headers: {
           'apikey': config.SUPABASE_SERVICE_ROLE_KEY,
@@ -104,6 +108,7 @@ function InvoiceGenerator() {
       });
       
       console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
       
       if (response.status === 401) {
         console.log('401 Unauthorized - API key issue, redirecting to login');
@@ -120,6 +125,7 @@ function InvoiceGenerator() {
       
       const invoices = await response.json();
       console.log('Invoices fetched successfully:', invoices.length);
+      console.log('Invoices data:', invoices);
       
       // Fetch items for each invoice
       const invoicesWithItems = await Promise.all(
@@ -162,10 +168,66 @@ function InvoiceGenerator() {
     setForm({ ...form, items: newItems });
   };
 
+  // Helper function to convert plain text to bullet points
+  const formatBulletPoints = (text) => {
+    if (!text) return '';
+    
+    // Split by lines and add bullet points to non-empty lines
+    const lines = text.split('\n').filter(line => line.trim() !== '');
+    return lines.map(line => {
+      const trimmed = line.trim();
+      // If line doesn't start with a bullet point, add one
+      if (!trimmed.startsWith('•') && !trimmed.startsWith('-') && !trimmed.startsWith('*')) {
+        return `• ${trimmed}`;
+      }
+      return trimmed;
+    }).join('\n');
+  };
+
+  // Helper function to handle bullet point input
+  const handleBulletPointInput = (index, value) => {
+    const newItems = [...form.items];
+    newItems[index].description = value;
+    setForm({ ...form, items: newItems });
+  };
+
+  // Helper function to handle key press for automatic bullet point formatting
+  const handleDescriptionKeyPress = (index, e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentValue = form.items[index].description;
+      const cursorPosition = e.target.selectionStart;
+      const lines = currentValue.split('\n');
+      const currentLineIndex = currentValue.substring(0, cursorPosition).split('\n').length - 1;
+      
+      // Find the current line and check if it starts with a bullet point
+      const currentLine = lines[currentLineIndex] || '';
+      const trimmedLine = currentLine.trim();
+      
+      let newLine = '';
+      if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+        // If current line has a bullet point, add a new bullet point
+        newLine = '• ';
+      } else if (trimmedLine.length > 0) {
+        // If current line has content but no bullet point, add one
+        newLine = '• ';
+      }
+      
+      const newValue = currentValue.substring(0, cursorPosition) + '\n' + newLine + currentValue.substring(cursorPosition);
+      handleBulletPointInput(index, newValue);
+      
+      // Set cursor position after the new bullet point
+      setTimeout(() => {
+        const newCursorPosition = cursorPosition + newLine.length + 1;
+        e.target.setSelectionRange(newCursorPosition, newCursorPosition);
+      }, 0);
+    }
+  };
+
   const addItem = () => {
     setForm({
       ...form,
-      items: [...form.items, { description: '', quantity: 1, unit_price: 0 }]
+      items: [...form.items, { description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
     });
   };
 
@@ -192,7 +254,11 @@ function InvoiceGenerator() {
     setError(null);
 
     try {
+      // Generate invoice number
+      const invoiceNumber = `INV-${Date.now()}`;
+      
       const invoiceData = {
+        invoice_number: invoiceNumber,
         customer_name: form.customer_name,
         customer_email: form.customer_email,
         customer_phone: form.customer_phone,
@@ -262,6 +328,7 @@ function InvoiceGenerator() {
         }
       } else {
         // Create new invoice
+        console.log('Creating invoice with data:', invoiceData);
         const response = await fetch(`${config.SUPABASE_URL}/rest/v1/invoices`, {
           method: 'POST',
           headers: {
@@ -273,12 +340,15 @@ function InvoiceGenerator() {
           body: JSON.stringify(invoiceData)
         });
 
-        if (response.ok) {
-          const newInvoice = await response.json();
-          const items = form.items.filter(item => item.description.trim() !== '');
-          
-          // Add items for the new invoice
-          for (const item of items) {
+        console.log('Invoice creation response status:', response.status);
+        
+                  if (response.ok) {
+            const newInvoice = await response.json();
+            console.log('Invoice created successfully:', newInvoice);
+            const items = form.items.filter(item => item.description.trim() !== '');
+            
+            // Add items for the new invoice
+            for (const item of items) {
             await fetch(`${config.SUPABASE_URL}/rest/v1/invoice_items`, {
               method: 'POST',
               headers: {
@@ -298,7 +368,9 @@ function InvoiceGenerator() {
         }
       }
 
-      fetchInvoices(); // Refresh the invoice list
+      console.log('Invoice saved, refreshing list...');
+      await fetchInvoices(); // Refresh the invoice list
+      console.log('Invoice list refreshed');
       setShowForm(false);
       setEditingInvoice(null);
       setForm({
@@ -310,7 +382,7 @@ function InvoiceGenerator() {
         tax_rate: 13,
         notes: '',
         payment_terms: 'Net 30',
-        items: [{ description: '', quantity: 1, unit_price: 0 }]
+        items: [{ description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
       });
     } catch (error) {
       console.error('Error saving invoice:', error);
@@ -331,7 +403,7 @@ function InvoiceGenerator() {
       tax_rate: invoice.tax_rate || 13,
       notes: invoice.notes || '',
       payment_terms: invoice.payment_terms || 'Net 30',
-      items: invoice.items || [{ description: '', quantity: 1, unit_price: 0 }]
+      items: invoice.items || [{ description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
     });
     setShowForm(true);
   };
@@ -384,6 +456,7 @@ function InvoiceGenerator() {
       <html>
         <head>
           <title>Invoice ${invoice.invoice_number}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             * {
               margin: 0;
@@ -392,157 +465,196 @@ function InvoiceGenerator() {
             }
             
             body {
-              font-family: 'Arial', sans-serif;
+              font-family: 'Arial', 'Helvetica', sans-serif;
               line-height: 1.6;
               color: #333;
               max-width: 800px;
               margin: 0 auto;
               padding: 20px;
+              background: #ffffff;
             }
             
+            /* Header Section - Professional Layout */
             .invoice-header {
               display: flex;
               justify-content: space-between;
               align-items: flex-start;
-              margin-bottom: 40px;
+              margin-bottom: 30px;
               padding-bottom: 20px;
-              border-bottom: 3px solid #1e40af;
+              border-bottom: 1px solid #ddd;
+            }
+            
+            .company-info {
+              display: flex;
+              flex-direction: column;
+              gap: 5px;
             }
             
             .company-info h1 {
-              color: #1e40af;
-              font-size: 32px;
+              color: #333;
+              font-size: 24px;
               font-weight: bold;
-              margin-bottom: 8px;
+              margin: 0;
+              line-height: 1.2;
             }
             
             .company-info p {
               color: #666;
-              margin: 2px 0;
-              font-size: 14px;
-            }
-            
-            .invoice-title {
-              text-align: right;
-            }
-            
-            .invoice-title h2 {
-              color: #1e40af;
-              font-size: 36px;
-              font-weight: bold;
-              margin-bottom: 8px;
-            }
-            
-            .invoice-number {
-              color: #666;
-              font-size: 16px;
+              margin: 0;
+              font-size: 12px;
+              line-height: 1.4;
             }
             
             .invoice-details {
+              text-align: right;
               display: flex;
-              justify-content: space-between;
-              margin-bottom: 40px;
+              flex-direction: column;
+              gap: 8px;
             }
             
-            .bill-to, .invoice-info {
-              width: 48%;
-            }
-            
-            .bill-to h3, .invoice-info h3 {
-              color: #1e40af;
-              font-size: 18px;
-              margin-bottom: 12px;
-              text-transform: uppercase;
+            .invoice-title {
+              color: #333;
+              font-size: 28px;
               font-weight: bold;
+              margin: 0;
+              text-transform: uppercase;
             }
             
-            .customer-details {
-              background: #f8fafc;
-              padding: 16px;
-              border-radius: 6px;
-              border-left: 4px solid #1e40af;
-            }
-            
-            .customer-details h4 {
-              color: #1e40af;
+            .invoice-number {
+              color: #333;
               font-size: 16px;
-              margin-bottom: 8px;
+              font-weight: bold;
+              margin: 0;
             }
             
-            .customer-details p {
+            .invoice-date {
               color: #666;
-              font-size: 14px;
-              margin: 2px 0;
+              font-size: 12px;
+              margin: 0;
             }
             
-            .invoice-info-item {
+
+            
+
+            
+            /* Billing Section */
+            .billing-section {
               display: flex;
               justify-content: space-between;
-              margin: 8px 0;
-              padding: 8px 0;
-              border-bottom: 1px solid #e2e8f0;
+              margin-bottom: 30px;
             }
             
-            .invoice-info-item:last-child {
-              border-bottom: none;
+            .client-info {
+              display: flex;
+              flex-direction: column;
+              gap: 5px;
             }
             
-            .invoice-info-item strong {
-              color: #1e40af;
+            .client-name {
+              color: #333;
+              font-size: 16px;
+              font-weight: bold;
+              margin: 0;
             }
             
+            .client-details {
+              color: #666;
+              font-size: 12px;
+              margin: 0;
+              line-height: 1.4;
+            }
+            
+            .project-section {
+              margin-top: 15px;
+            }
+            
+            .project-label {
+              color: #333;
+              font-size: 14px;
+              font-weight: bold;
+              margin: 0 0 5px 0;
+              text-transform: uppercase;
+            }
+            
+            .project-name {
+              color: #333;
+              font-size: 14px;
+              margin: 0;
+            }
+            
+
+            
+            /* Table Section */
             .items-table {
               width: 100%;
               border-collapse: collapse;
               margin-bottom: 30px;
               background: white;
-              border: 1px solid #e2e8f0;
-              border-radius: 6px;
-              overflow: hidden;
+              border: 1px solid #ddd;
+            }
+            
+            .detail-item {
+              text-align: center;
             }
             
             .items-table thead {
-              background: #1e40af;
-              color: white;
-            }
-            
-            .items-table th, .items-table td {
-              padding: 12px;
-              text-align: left;
+              background: #f8f8f8;
+              border-bottom: 2px solid #ddd;
             }
             
             .items-table th {
+              padding: 12px 8px;
+              text-align: left;
               font-weight: bold;
-              text-transform: uppercase;
               font-size: 12px;
-              letter-spacing: 0.5px;
+              text-transform: uppercase;
+              color: #333;
             }
             
-            .items-table th:nth-child(2), .items-table th:nth-child(3), .items-table th:nth-child(4),
-            .items-table td:nth-child(2), .items-table td:nth-child(3), .items-table td:nth-child(4) {
+            .items-table th:last-child {
               text-align: right;
             }
             
-            .items-table tbody tr:nth-child(even) {
-              background: #f8fafc;
-            }
-            
-            .items-table tbody tr:hover {
-              background: #e2e8f0;
-            }
-            
             .items-table td {
-              border-bottom: 1px solid #e2e8f0;
-              font-size: 14px;
+              padding: 12px 8px;
+              border-bottom: 1px solid #eee;
+              font-size: 12px;
+              line-height: 1.4;
             }
             
-            .totals {
+            .items-table td:last-child {
+              text-align: right;
+              font-weight: bold;
+            }
+            
+            /* Service/Product Details Table */
+
+            
+
+            
+            .items-table tbody tr:nth-child(even) {
+              background: #f9f9f9;
+            }
+            
+            .description-cell {
+              white-space: pre-line;
+              line-height: 1.4;
+            }
+            
+            .description-intro {
+              font-weight: bold;
+              margin-bottom: 8px;
+            }
+            
+            .description-bullets {
+              margin-left: 15px;
+            }
+            
+            /* Totals Section */
+            .totals-section {
               margin-left: auto;
               width: 300px;
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 6px;
-              padding: 20px;
+              text-align: right;
             }
             
             .total-row {
@@ -550,53 +662,129 @@ function InvoiceGenerator() {
               justify-content: space-between;
               margin: 8px 0;
               padding: 4px 0;
+              font-size: 14px;
             }
             
-            .total-row.subtotal, .total-row.tax {
+            .total-row.tax {
               color: #666;
-              border-bottom: 1px solid #e2e8f0;
+              border-bottom: 1px solid #eee;
               padding-bottom: 8px;
             }
             
             .total-row.final-total {
               font-weight: bold;
               font-size: 18px;
-              color: #1e40af;
-              border-top: 2px solid #1e40af;
+              color: #333;
+              border-top: 2px solid #333;
               padding-top: 12px;
               margin-top: 12px;
             }
             
-            .notes {
-              margin-top: 40px;
-              padding: 20px;
-              background: #f8fafc;
-              border-radius: 6px;
-              border-left: 4px solid #1e40af;
-            }
+
             
-            .notes h4 {
-              color: #1e40af;
-              margin-bottom: 10px;
-              font-size: 16px;
-            }
-            
-            .notes p {
-              color: #666;
-              line-height: 1.6;
-            }
-            
+            /* Footer */
             .footer {
               margin-top: 40px;
               text-align: center;
               padding: 20px;
-              border-top: 1px solid #e2e8f0;
+              border-top: 1px solid #ddd;
               color: #666;
-              font-size: 14px;
+              font-size: 10px;
+              line-height: 1.4;
+            }
+            
+            .footer p {
+              margin: 5px 0;
+            }
+            
+            /* Footer Information */
+            .footer {
+              margin-top: 25px;
+              text-align: center;
+              padding: 25px 20px;
+              border-top: 2px solid #183153;
+              color: #666;
+              font-size: 12px;
+              background: linear-gradient(135deg, #f8f9fa, #ffffff);
+              border-radius: 8px;
+              box-shadow: 0 2px 8px rgba(24, 49, 83, 0.1);
             }
             
             .footer strong {
-              color: #1e40af;
+              color: #183153;
+              font-weight: bold;
+            }
+            
+            .footer-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 20px;
+              margin-top: 20px;
+              text-align: left;
+            }
+            
+            .footer-section h5 {
+              color: #183153;
+              font-size: 14px;
+              margin-bottom: 8px;
+              font-weight: bold;
+            }
+            
+            .footer-section p {
+              font-size: 12px;
+              line-height: 1.4;
+              margin: 4px 0;
+            }
+            
+            /* Mobile Responsiveness */
+            @media (max-width: 768px) {
+              body {
+                padding: 15px;
+              }
+              
+              .invoice-header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+              }
+              
+              .invoice-details {
+                text-align: center;
+              }
+              
+              .billing-section {
+                flex-direction: column;
+                gap: 20px;
+              }
+              
+              .totals-section {
+                width: 100%;
+                margin: 20px 0;
+              }
+              
+              .invoice-details-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                padding: 15px;
+              }
+              
+              .financial-summary {
+                width: 100%;
+                margin: 20px 0;
+              }
+              
+              .items-table {
+                font-size: 12px;
+              }
+              
+              .items-table th, .items-table td {
+                padding: 8px 6px;
+              }
+              
+              .footer-grid {
+                grid-template-columns: 1fr;
+                text-align: center;
+              }
             }
             
             @media print {
@@ -608,82 +796,79 @@ function InvoiceGenerator() {
               .no-print {
                 display: none !important;
               }
+              
+              .invoice-header {
+                page-break-inside: avoid;
+              }
+              
+              .items-table {
+                page-break-inside: avoid;
+              }
             }
           </style>
         </head>
         <body>
+          <!-- Header Section -->
           <div class="invoice-header">
             <div class="company-info">
               <h1>${companyInfo.name}</h1>
               <p>${companyInfo.address}</p>
               <p>Phone: ${companyInfo.phone}</p>
               <p>Email: ${companyInfo.email}</p>
-              <p>Website: ${companyInfo.website}</p>
             </div>
-            <div class="invoice-title">
-              <h2>INVOICE</h2>
+            <div class="invoice-details">
+              <div class="invoice-title">INVOICE</div>
               <div class="invoice-number">#${invoice.invoice_number}</div>
+              <div class="invoice-date">Date: ${new Date(invoice.created_at).toLocaleDateString('en-CA')}</div>
             </div>
           </div>
           
-          <div class="invoice-details">
-            <div class="bill-to">
-              <h3>Bill To</h3>
-              <div class="customer-details">
-                <h4>${invoice.customer_name}</h4>
-                <p>${invoice.customer_email}</p>
-                ${invoice.customer_phone ? `<p>${invoice.customer_phone}</p>` : ''}
-                ${invoice.customer_address ? `<p>${invoice.customer_address}</p>` : ''}
-              </div>
-            </div>
-            
-            <div class="invoice-info">
-              <h3>Invoice Details</h3>
-              <div class="invoice-info-item">
-                <span>Invoice Date:</span>
-                <strong>${new Date(invoice.created_at).toLocaleDateString('en-CA')}</strong>
-              </div>
-              <div class="invoice-info-item">
-                <span>Due Date:</span>
-                <strong>${new Date(invoice.due_date).toLocaleDateString('en-CA')}</strong>
-              </div>
-              <div class="invoice-info-item">
-                <span>Payment Terms:</span>
-                <strong>${invoice.payment_terms}</strong>
-              </div>
-              <div class="invoice-info-item">
-                <span>Status:</span>
-                <strong style="text-transform: uppercase;">${invoice.status}</strong>
+          <!-- Billing Section -->
+          <div class="billing-section">
+            <div class="client-info">
+              <div class="client-name">${invoice.customer_name}</div>
+              <div class="client-details">${invoice.customer_email}</div>
+              ${invoice.customer_phone ? `<div class="client-details">${invoice.customer_phone}</div>` : ''}
+              ${invoice.customer_address ? `<div class="client-details">${invoice.customer_address}</div>` : ''}
+              
+              <div class="project-section">
+                <div class="project-label">FOR:</div>
+                <div class="project-name">HVAC Services</div>
               </div>
             </div>
           </div>
           
+
+          
+          <!-- Service/Product Details Table -->
           <table class="items-table">
             <thead>
               <tr>
                 <th>Description</th>
-                <th>Qty</th>
                 <th>Unit Price</th>
-                <th>Total</th>
               </tr>
             </thead>
             <tbody>
-              ${invoice.items.map(item => `
-                <tr>
-                  <td>${item.description}</td>
-                  <td>${item.quantity}</td>
-                  <td>$${item.unit_price.toFixed(2)}</td>
-                  <td>$${(item.quantity * item.unit_price).toFixed(2)}</td>
-                </tr>
-              `).join('')}
+              ${invoice.items.map(item => {
+                const descriptionLines = item.description.split('\n');
+                const introLine = descriptionLines[0] || '';
+                const bulletPoints = descriptionLines.slice(1).filter(line => line.trim());
+                
+                return `
+                  <tr>
+                    <td class="description-cell">
+                      <div class="description-intro">${introLine}</div>
+                      ${bulletPoints.length > 0 ? `<div class="description-bullets">${bulletPoints.map(line => `• ${line.trim()}`).join('<br>')}</div>` : ''}
+                    </td>
+                    <td>$${item.unit_price.toFixed(2)}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
           
-          <div class="totals">
-            <div class="total-row subtotal">
-              <span>Subtotal:</span>
-              <span>$${invoice.subtotal.toFixed(2)}</span>
-            </div>
+          <!-- Totals Section -->
+          <div class="totals-section">
             <div class="total-row tax">
               <span>Tax (${invoice.tax_rate}%):</span>
               <span>$${invoice.tax_amount.toFixed(2)}</span>
@@ -694,15 +879,11 @@ function InvoiceGenerator() {
             </div>
           </div>
           
-          ${invoice.notes ? `
-            <div class="notes">
-              <h4>Notes</h4>
-              <p>${invoice.notes}</p>
-            </div>
-          ` : ''}
-          
+          <!-- Footer -->
           <div class="footer">
-            <p><strong>Thank you for choosing ${companyInfo.name}!</strong></p>
+            <p>Thank you for choosing ${companyInfo.name}!</p>
+            <p>Payment is due within ${invoice.payment_terms}. Please include invoice number with payment.</p>
+            <p>All work guaranteed for 1 year. Parts warranty as per manufacturer.</p>
             <p>For questions about this invoice, please contact us at ${companyInfo.phone}</p>
           </div>
         </body>
@@ -731,56 +912,93 @@ function InvoiceGenerator() {
       });
       
       // Set initial position
-      let y = 20;
-      const margin = 20;
+      let y = 25;
+      const margin = 25;
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
-      // Company header
-      pdf.setFontSize(20);
+      // Helper function to format bullet points for PDF
+      const formatDescriptionForPDF = (description) => {
+        if (!description) return '';
+        
+        const lines = description.split('\n').filter(line => line.trim() !== '');
+        return lines.map(line => {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('•') && !trimmed.startsWith('-') && !trimmed.startsWith('*')) {
+            return `• ${trimmed}`;
+          }
+          return trimmed;
+        });
+      };
+      
+      // Add company logo to PDF
+      try {
+        const logoUrl = '/logo.png';
+        pdf.addImage(logoUrl, 'PNG', margin, y - 12, 20, 20);
+        y += 28; // Move down to account for logo
+      } catch (error) {
+        console.log('Logo not found, using text fallback');
+        // Draw a placeholder for the logo
+        pdf.setFillColor(24, 49, 83);
+        pdf.rect(margin, y - 12, 20, 20, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('JI', margin + 6, y - 2);
+        y += 28;
+      }
+      
+      // Company header with enhanced styling
+      pdf.setFontSize(24);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(companyInfo.name, margin, y);
+      pdf.setTextColor(24, 49, 83); // Dark blue color
+      pdf.text(companyInfo.name, margin + 30, y);
       y += 10;
       
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(companyInfo.address, margin, y);
-      y += 5;
-      pdf.text(`Phone: ${companyInfo.phone}`, margin, y);
-      y += 5;
-      pdf.text(`Email: ${companyInfo.email}`, margin, y);
-      y += 5;
-      pdf.text(`Website: ${companyInfo.website}`, margin, y);
+      pdf.setTextColor(74, 85, 104); // Gray color
+      pdf.text(companyInfo.address, margin + 30, y);
+      y += 4;
+      pdf.text(`Phone: ${companyInfo.phone}`, margin + 30, y);
+      y += 4;
+      pdf.text(`Email: ${companyInfo.email}`, margin + 30, y);
+      y += 4;
+      pdf.text(`Website: ${companyInfo.website}`, margin + 30, y);
       y += 15;
       
-      // Invoice title and number
+      // Invoice title and number (right-aligned)
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(24, 49, 83);
+      pdf.text('INVOICE', pageWidth - margin - 40, 30);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(24, 49, 83);
+      pdf.text(`#${invoice.invoice_number}`, pageWidth - margin - 40, 42);
+      y += 25;
+      
+      // Customer information section
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('INVOICE', pageWidth - margin - 30, 30);
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`#${invoice.invoice_number}`, pageWidth - margin - 30, 40);
-      y += 20;
-      
-      // Customer information
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(24, 49, 83);
       pdf.text('Bill To:', margin, y);
-      y += 8;
+      y += 10;
       
-      pdf.setFontSize(10);
+      pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(45, 55, 72);
       pdf.text(invoice.customer_name, margin, y);
-      y += 5;
+      y += 6;
       pdf.text(invoice.customer_email, margin, y);
-      y += 5;
+      y += 6;
       if (invoice.customer_phone) {
         pdf.text(invoice.customer_phone, margin, y);
-        y += 5;
+        y += 6;
       }
       if (invoice.customer_address) {
         pdf.text(invoice.customer_address, margin, y);
-        y += 5;
+        y += 6;
       }
       y += 10;
       
@@ -797,70 +1015,101 @@ function InvoiceGenerator() {
       pdf.text(`Due Date: ${new Date(invoice.due_date).toLocaleDateString('en-CA')}`, pageWidth - margin - 50, y);
       y += 5;
       pdf.text(`Payment Terms: ${invoice.payment_terms}`, pageWidth - margin - 50, y);
-      y += 5;
-      pdf.text(`Status: ${invoice.status.toUpperCase()}`, pageWidth - margin - 50, y);
       y += 20;
       
-      // Items table
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Description', margin, y);
-      pdf.text('Qty', margin + 80, y);
-      pdf.text('Unit Price', margin + 120, y);
-      pdf.text('Total', margin + 160, y);
-      y += 8;
-      
-      // Draw line under header
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 5;
-      
-      // Items
-      pdf.setFont('helvetica', 'normal');
-      invoice.items.forEach((item) => {
-        if (y > pageHeight - 60) { // Check if we need a new page
-          pdf.addPage();
-          y = 20;
-        }
-        
-        pdf.text(item.description, margin, y);
-        pdf.text(item.quantity.toString(), margin + 80, y);
-        pdf.text(`$${item.unit_price.toFixed(2)}`, margin + 120, y);
-        pdf.text(`$${(item.quantity * item.unit_price).toFixed(2)}`, margin + 160, y);
-        y += 6;
-      });
-      
-      y += 10;
-      
-      // Draw line before totals
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 5;
-      
-      // Totals
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('Subtotal:', margin + 100, y);
-      pdf.text(`$${invoice.subtotal.toFixed(2)}`, margin + 160, y);
-      y += 6;
-      
-      pdf.text(`Tax (${invoice.tax_rate}%):`, margin + 100, y);
-      pdf.text(`$${invoice.tax_amount.toFixed(2)}`, margin + 160, y);
-      y += 6;
-      
+      // Items table header
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('TOTAL:', margin + 100, y);
-      pdf.text(`$${invoice.total_amount.toFixed(2)}`, margin + 160, y);
+      pdf.setTextColor(24, 49, 83);
+      pdf.text('Description', margin, y);
+      pdf.text('Qty', margin + 85, y);
+      pdf.text('Unit Price', margin + 125, y);
+      pdf.text('Total', margin + 165, y);
+      y += 10;
+      
+      // Draw line under header
+      pdf.setDrawColor(24, 49, 83);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 8;
+      
+      // Items with enhanced styling
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(45, 55, 72);
+      invoice.items.forEach((item) => {
+        if (y > pageHeight - 80) { // Check if we need a new page
+          pdf.addPage();
+          y = 25;
+        }
+        
+        // Handle bullet points in description
+        const descriptionLines = formatDescriptionForPDF(item.description);
+        
+        descriptionLines.forEach((line, lineIndex) => {
+          if (y > pageHeight - 80) { // Check if we need a new page
+            pdf.addPage();
+            y = 25;
+          }
+          
+          // Only show quantity and price on first line
+          if (lineIndex === 0) {
+            pdf.setFontSize(10);
+            pdf.text(line, margin, y);
+            pdf.text(item.quantity.toString(), margin + 85, y);
+            pdf.text(`$${item.unit_price.toFixed(2)}`, margin + 125, y);
+            pdf.text(`$${(item.quantity * item.unit_price).toFixed(2)}`, margin + 165, y);
+          } else {
+            // For continuation lines, only show the description with indentation
+            pdf.setFontSize(9);
+            pdf.text(`  ${line}`, margin, y);
+          }
+          y += 7;
+        });
+        
+        // Add extra space after multi-line descriptions
+        if (descriptionLines.length > 1) {
+          y += 4;
+        }
+      });
+      
       y += 15;
       
-      // Notes
+      // Draw line before totals
+      pdf.setDrawColor(30, 64, 175);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 10;
+      
+      // Financial Summary with enhanced styling
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(74, 85, 104);
+      pdf.text('Subtotal:', margin + 110, y);
+      pdf.text(`$${invoice.subtotal.toFixed(2)}`, margin + 165, y);
+      y += 8;
+      
+      pdf.text(`Tax (${invoice.tax_rate}%):`, margin + 110, y);
+      pdf.text(`$${invoice.tax_amount.toFixed(2)}`, margin + 165, y);
+      y += 12;
+      
+      // Final total with emphasis
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(30, 64, 175);
+      pdf.text('TOTAL:', margin + 110, y);
+      pdf.text(`$${invoice.total_amount.toFixed(2)}`, margin + 165, y);
+      y += 20;
+      
+      // Notes section with enhanced styling
       if (invoice.notes) {
-        pdf.setFontSize(10);
+        pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(30, 64, 175);
         pdf.text('Notes:', margin, y);
-        y += 8;
+        y += 10;
         
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
+        pdf.setFontSize(10);
+        pdf.setTextColor(74, 85, 104);
         
         // Simple text wrapping
         const maxWidth = pageWidth - (margin * 2);
@@ -873,23 +1122,29 @@ function InvoiceGenerator() {
             line = testLine;
           } else {
             pdf.text(line, margin, y);
-            y += 4;
+            y += 5;
             line = word + ' ';
           }
         }
         if (line) {
           pdf.text(line, margin, y);
-          y += 8;
+          y += 10;
         }
       }
       
-      // Footer
-      y += 10;
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'normal');
+      // Footer with enhanced styling
+      y += 15;
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(30, 64, 175);
       pdf.text(`Thank you for choosing ${companyInfo.name}!`, margin, y);
-      y += 4;
+      y += 6;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(74, 85, 104);
       pdf.text(`For questions about this invoice, please contact us at ${companyInfo.phone}`, margin, y);
+      y += 6;
+      pdf.text(`Website: ${companyInfo.website}`, margin, y);
       
       // Save the PDF with proper error handling
       const filename = `invoice-${invoice.invoice_number}.pdf`;
@@ -1036,6 +1291,42 @@ function InvoiceGenerator() {
             {/* Items */}
             <div>
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Invoice Items</h3>
+              
+              {/* Enhanced Bullet Points Help Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 className="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <FaListUl /> Enhanced Description Features
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h5 className="font-semibold text-blue-800 mb-2">Bullet Points Support</h5>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Each line becomes a bullet point automatically</li>
+                      <li>• Press Enter to create new bullet points</li>
+                      <li>• Use • - * symbols for manual bullet points</li>
+                      <li>• Perfect for detailed service descriptions</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 className="font-semibold text-blue-800 mb-2">Professional Layout</h5>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Enhanced typography and spacing</li>
+                      <li>• Professional color scheme</li>
+                      <li>• Improved visual hierarchy</li>
+                      <li>• Better PDF and print formatting</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h4 className="text-sm font-semibold text-blue-900 mb-2">💡 Bullet Point Tips</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• Press <kbd className="bg-blue-200 px-1 rounded text-xs">Enter</kbd> to automatically add bullet points</li>
+                  <li>• Use • - * symbols for bullet points</li>
+                  <li>• Click "Format Bullet Points" to auto-format existing text</li>
+                  <li>• Perfect for detailed service descriptions with multiple components</li>
+                </ul>
+              </div>
               {form.items.map((item, index) => (
                 <div key={index} className="bg-gray-50 p-4 rounded-lg mb-4 border">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -1043,12 +1334,28 @@ function InvoiceGenerator() {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Description *
                       </label>
-                      <input
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <div className="space-y-2">
+                        <textarea
+                          value={item.description}
+                          onChange={(e) => handleBulletPointInput(index, e.target.value)}
+                          onKeyDown={(e) => handleDescriptionKeyPress(index, e)}
+                          rows="4"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter description...&#10;• Use bullet points for multiple items&#10;• Press Enter for new lines&#10;• Example:&#10;• Fan coil installation&#10;• Air filter replacement&#10;• System testing"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleBulletPointInput(index, formatBulletPoints(item.description))}
+                            className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded transition-colors duration-200"
+                          >
+                            Format Bullet Points
+                          </button>
+                          <span className="text-xs text-gray-500">
+                            Tip: Use • - * for bullet points or let us format automatically
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1171,7 +1478,7 @@ function InvoiceGenerator() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || form.items.some(item => !item.description.trim())}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-3 px-6 rounded-lg font-semibold transition-colors duration-200"
             >
               {loading ? 'Saving...' : (editingInvoice ? 'Update Invoice' : 'Create Invoice')}
@@ -1408,18 +1715,25 @@ function InvoiceGenerator() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {viewingInvoice.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 text-sm text-gray-900">{item.description}</td>
-                          <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.quantity}</td>
-                          <td className="px-6 py-4 text-sm text-gray-900 text-right">
-                            ${item.unit_price.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">
-                            ${(item.quantity * item.unit_price).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
+                      {viewingInvoice.items.map((item, index) => {
+                        const descriptionLines = item.description.split('\n');
+                        return descriptionLines.map((line, lineIndex) => (
+                          <tr key={`${index}-${lineIndex}`}>
+                            <td className="px-6 py-4 text-sm text-gray-900 whitespace-pre-line">
+                              {lineIndex === 0 ? line : `    ${line}`}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                              {lineIndex === 0 ? item.quantity : ''}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                              {lineIndex === 0 ? `$${item.unit_price.toFixed(2)}` : ''}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">
+                              {lineIndex === 0 ? `$${(item.quantity * item.unit_price).toFixed(2)}` : ''}
+                            </td>
+                          </tr>
+                        ));
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -19,6 +19,11 @@ if (typeof window !== 'undefined') {
   const port = window.location.port;
   
   console.log('Frontend config - hostname:', hostname, 'port:', port);
+  console.log('Environment variables check:', {
+    SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL ? 'SET' : 'NOT SET',
+    SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
+    NODE_ENV: process.env.NODE_ENV
+  });
   
   // For custom domain (production)
   if (hostname === 'jiheatingandcooling.org' || hostname === 'www.jiheatingandcooling.org') {
