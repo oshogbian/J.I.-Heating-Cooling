@@ -6,6 +6,7 @@
   "scripts": {
     "build": "cd frontend && npm run build",
     "dev": "cd frontend && npm start",
+    "start": "node app.js",
     "install-all": "npm install && cd frontend && npm install",
     "deploy": "cd frontend && npm run build && firebase deploy --only hosting"
   },
@@ -22,6 +23,15 @@
   "author": "J.I. Heating & Cooling",
   "license": "ISC",
   "dependencies": {
-    "dotenv": "^17.2.1"
+    "dotenv": "^17.2.1",
+    "@supabase/supabase-js": "^2.52.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.5",
+    "pdfkit": "^0.15.0",
+    "pg": "^8.16.3",
+    "sequelize": "^6.37.1",
+    "sqlite3": "^5.1.7"
   }
 }
