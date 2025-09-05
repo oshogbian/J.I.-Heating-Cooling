@@ -3,7 +3,6 @@ import { FaPlus, FaTrash, FaDownload, FaEye, FaEdit, FaSignOutAlt, FaPrint, FaLi
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
 import jsPDF from 'jspdf';
-import { errorReporter } from '../utils/errorReporting';
 
 function InvoiceGenerator() {
   const [invoices, setInvoices] = useState([]);

@@ -12,17 +12,10 @@ import Login from './pages/Login';
 import FanCoilService from './pages/FanCoilService';
 import HeatPumpService from './pages/HeatPumpService';
 import VentCleaningService from './pages/VentCleaningService';
-import { errorReporter, ErrorBoundary } from './utils/errorReporting';
-
 function App() {
-  useEffect(() => {
-    // Setup global error handling
-    errorReporter.setupGlobalErrorHandling();
-  }, []);
 
   return (
-    <ErrorBoundary>
-      <Router>
+    <Router>
         <Header />
         <main style={{ minHeight: '80vh' }}>
           <Routes>
@@ -40,7 +33,6 @@ function App() {
         </main>
         <Footer />
       </Router>
-    </ErrorBoundary>
   );
 }
 
