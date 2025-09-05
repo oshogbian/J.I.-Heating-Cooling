@@ -1,72 +1,135 @@
-import React, { useState } from 'react';
-import config from '../config';
+import React, { useState } from "react";
+import config from "../config";
 
 function Emergency() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', issue: '' });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    issue: "",
+  });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const [submissionMessage, setSubmissionMessage] = useState('');
+  const [submissionMessage, setSubmissionMessage] = useState("");
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    
-    console.log('Emergency form submission - Config:', {
+
+    console.log("Emergency form submission - Config:", {
+      API_URL: config.API_URL,
       SUPABASE_URL: config.SUPABASE_URL,
-      SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
-      formData: form
+      formData: form,
     });
-    
+
     try {
-      const res = await fetch(`${config.SUPABASE_URL}/rest/v1/emergency_requests`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': config.SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${config.SUPABASE_ANON_KEY}`,
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          customer_info: form.name,
-          email: form.email,
-          phone: form.phone,
-          address: form.address,
-          issue: form.issue
-        }),
-      });
-      
-      console.log('Emergency form response:', {
-        status: res.status,
-        statusText: res.statusText,
-        ok: res.ok
-      });
-      
-      if (res.ok) {
-        setSubmissionMessage('Thank you! We\'ll respond to your emergency ASAP.');
-        setSubmitted(true);
-      } else {
-        const errorText = await res.text();
-        console.error('Emergency form error response:', errorText);
-        setError('There was an error. Please try again.');
+      // Try backend first, fallback to Supabase if needed
+      try {
+        const res = await fetch(`${config.API_URL}/api/emergency`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            phone: form.phone,
+            address: form.address,
+            issue: form.issue,
+          }),
+        });
+
+        console.log("Emergency form backend response:", {
+          status: res.status,
+          statusText: res.statusText,
+          ok: res.ok,
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          setSubmissionMessage(
+            result.message || "Thank you! We'll respond to your emergency ASAP."
+          );
+          setSubmitted(true);
+        } else {
+          throw new Error("Backend request failed");
+        }
+      } catch (backendError) {
+        console.warn(
+          "Backend submission failed, trying Supabase:",
+          backendError
+        );
+
+        // Fallback to Supabase
+        const res = await fetch(
+          `${config.SUPABASE_URL}/rest/v1/emergency_requests`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: config.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${config.SUPABASE_ANON_KEY}`,
+              Prefer: "return=representation",
+            },
+            body: JSON.stringify({
+              customer_info: form.name,
+              email: form.email,
+              phone: form.phone,
+              address: form.address,
+              issue: form.issue,
+            }),
+          }
+        );
+
+        console.log("Emergency form Supabase response:", {
+          status: res.status,
+          statusText: res.statusText,
+          ok: res.ok,
+        });
+
+        if (res.ok) {
+          setSubmissionMessage(
+            "Thank you! We'll respond to your emergency ASAP."
+          );
+          setSubmitted(true);
+        } else {
+          const errorText = await res.text();
+          console.error("Emergency form error response:", errorText);
+          setError("There was an error. Please try again.");
+        }
       }
     } catch (err) {
-      console.error('Emergency form network error:', err);
-      setError('Network error. Please try again.');
+      console.error("Emergency form network error:", err);
+      setError("Network error. Please try again.");
     }
   };
 
   if (submitted) {
     return (
-      <div style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', borderRadius: 12, boxShadow: 'var(--color-shadow)', padding: '2rem', textAlign: 'center', color: 'var(--color-emergency)', fontWeight: 600 }}>
-        <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-          🚨 {submissionMessage || 'Thank you! We\'ll respond to your emergency ASAP.'}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 12,
+          boxShadow: "var(--color-shadow)",
+          padding: "2rem",
+          textAlign: "center",
+          color: "var(--color-emergency)",
+          fontWeight: 600,
+        }}
+      >
+        <div style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>
+          🚨{" "}
+          {submissionMessage ||
+            "Thank you! We'll respond to your emergency ASAP."}
         </div>
-        <div style={{ fontSize: '0.9rem', color: '#666', fontWeight: 500 }}>
+        <div style={{ fontSize: "0.9rem", color: "#666", fontWeight: 500 }}>
           Your emergency request has been submitted successfully.
         </div>
       </div>
@@ -74,55 +137,202 @@ function Emergency() {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: '2rem auto', padding: '0 1rem' }}>
-      <div style={{
-        background: 'rgba(255,255,255,0.92)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: 14,
-        boxShadow: 'var(--color-shadow)',
-        padding: '2.5rem 2rem',
-        color: 'var(--color-emergency)',
-        textAlign: 'center',
-        marginBottom: '2rem',
-      }}>
-        <h2 style={{ fontWeight: 700, fontSize: '2.1rem', marginBottom: 16 }}> Emergency Service</h2>
-        <div style={{ fontSize: '1.15rem', marginBottom: 10 }}>
-          For immediate help, call <a href="tel:+14169979123" style={{ color: 'var(--color-emergency)', fontWeight: 700, textDecoration: 'none' }}>+1 416 997 9123</a> (Sam)
+    <div style={{ maxWidth: 800, margin: "2rem auto", padding: "0 1rem" }}>
+      <div
+        style={{
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(10px)",
+          borderRadius: 14,
+          boxShadow: "var(--color-shadow)",
+          padding: "2.5rem 2rem",
+          color: "var(--color-emergency)",
+          textAlign: "center",
+          marginBottom: "2rem",
+        }}
+      >
+        <h2 style={{ fontWeight: 700, fontSize: "2.1rem", marginBottom: 16 }}>
+          {" "}
+          Emergency Service
+        </h2>
+        <div style={{ fontSize: "1.15rem", marginBottom: 10 }}>
+          For immediate help, call{" "}
+          <a
+            href="tel:+14169979123"
+            style={{
+              color: "var(--color-emergency)",
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            +1 416 997 9123
+          </a>{" "}
+          (Sam)
         </div>
       </div>
-      <div style={{
-        background: 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: 14,
-        boxShadow: 'var(--color-shadow)',
-        padding: '2rem 1.5rem',
-        color: 'var(--color-primary)',
-        textAlign: 'center',
-      }}>
-        <h3 style={{ color: 'var(--color-primary)', fontWeight: 600, marginBottom: 16 }}>Request Emergency Service</h3>
-        <form onSubmit={handleSubmit} style={{ maxWidth: 400, margin: '0 auto' }}>
-          {error && <div style={{ color: 'var(--color-emergency)', marginBottom: 8 }}>{error}</div>}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(10px)",
+          borderRadius: 14,
+          boxShadow: "var(--color-shadow)",
+          padding: "2rem 1.5rem",
+          color: "var(--color-primary)",
+          textAlign: "center",
+        }}
+      >
+        <h3
+          style={{
+            color: "var(--color-primary)",
+            fontWeight: 600,
+            marginBottom: 16,
+          }}
+        >
+          Request Emergency Service
+        </h3>
+        <form
+          onSubmit={handleSubmit}
+          style={{ maxWidth: 400, margin: "0 auto" }}
+        >
+          {error && (
+            <div style={{ color: "var(--color-emergency)", marginBottom: 8 }}>
+              {error}
+            </div>
+          )}
           <div style={{ marginBottom: 14 }}>
-            <label htmlFor="name" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Name:</label>
-            <input id="name" name="name" value={form.name} onChange={handleChange} required aria-label="Name" style={{ width: '100%', padding: '0.7rem', border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+            <label
+              htmlFor="name"
+              style={{ display: "block", fontWeight: 600, marginBottom: 4 }}
+            >
+              Name:
+            </label>
+            <input
+              id="name"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              required
+              aria-label="Name"
+              style={{
+                width: "100%",
+                padding: "0.7rem",
+                border: "1px solid var(--color-gray)",
+                borderRadius: 4,
+                fontSize: "1rem",
+              }}
+            />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label htmlFor="email" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Email:</label>
-            <input id="email" name="email" type="email" value={form.email} onChange={handleChange} required aria-label="Email" style={{ width: '100%', padding: '0.7rem', border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+            <label
+              htmlFor="email"
+              style={{ display: "block", fontWeight: 600, marginBottom: 4 }}
+            >
+              Email:
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              required
+              aria-label="Email"
+              style={{
+                width: "100%",
+                padding: "0.7rem",
+                border: "1px solid var(--color-gray)",
+                borderRadius: 4,
+                fontSize: "1rem",
+              }}
+            />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label htmlFor="phone" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Phone:</label>
-            <input id="phone" name="phone" type="tel" value={form.phone} onChange={handleChange} required aria-label="Phone" style={{ width: '100%', padding: '0.7rem', border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+            <label
+              htmlFor="phone"
+              style={{ display: "block", fontWeight: 600, marginBottom: 4 }}
+            >
+              Phone:
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              value={form.phone}
+              onChange={handleChange}
+              required
+              aria-label="Phone"
+              style={{
+                width: "100%",
+                padding: "0.7rem",
+                border: "1px solid var(--color-gray)",
+                borderRadius: 4,
+                fontSize: "1rem",
+              }}
+            />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label htmlFor="address" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Address:</label>
-            <input id="address" name="address" value={form.address} onChange={handleChange} required aria-label="Address" style={{ width: '100%', padding: '0.7rem', border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem' }} />
+            <label
+              htmlFor="address"
+              style={{ display: "block", fontWeight: 600, marginBottom: 4 }}
+            >
+              Address:
+            </label>
+            <input
+              id="address"
+              name="address"
+              value={form.address}
+              onChange={handleChange}
+              required
+              aria-label="Address"
+              style={{
+                width: "100%",
+                padding: "0.7rem",
+                border: "1px solid var(--color-gray)",
+                borderRadius: 4,
+                fontSize: "1rem",
+              }}
+            />
           </div>
           <div style={{ marginBottom: 18 }}>
-            <label htmlFor="issue" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Issue Description:</label>
-            <textarea id="issue" name="issue" value={form.issue} onChange={handleChange} required aria-label="Issue Description" style={{ width: '100%', padding: '0.7rem', border: '1px solid var(--color-gray)', borderRadius: 4, fontSize: '1rem', minHeight: 80 }} />
+            <label
+              htmlFor="issue"
+              style={{ display: "block", fontWeight: 600, marginBottom: 4 }}
+            >
+              Issue Description:
+            </label>
+            <textarea
+              id="issue"
+              name="issue"
+              value={form.issue}
+              onChange={handleChange}
+              required
+              aria-label="Issue Description"
+              style={{
+                width: "100%",
+                padding: "0.7rem",
+                border: "1px solid var(--color-gray)",
+                borderRadius: 4,
+                fontSize: "1rem",
+                minHeight: 80,
+              }}
+            />
           </div>
-          <button type="submit" style={{ background: 'var(--color-emergency)', color: '#fff', border: 'none', borderRadius: 4, padding: '0.9rem 1.5rem', fontSize: '1.1rem', fontWeight: 700, cursor: 'pointer', width: '100%', transition: 'background 0.2s' }}>Request Emergency Service</button>
+          <button
+            type="submit"
+            style={{
+              background: "var(--color-emergency)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              padding: "0.9rem 1.5rem",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              width: "100%",
+              transition: "background 0.2s",
+            }}
+          >
+            Request Emergency Service
+          </button>
         </form>
       </div>
     </div>

@@ -11,6 +11,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google-cloud/error-reporting": "^3.0.5",
+    "firebase": "^12.2.1",
     "jspdf": "^3.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -48,11 +48,15 @@ module.exports = {
       ],
     }),
     new webpack.DefinePlugin({
-      'process.env.REACT_APP_API_URL': JSON.stringify(process.env.REACT_APP_API_URL || 'http://localhost:5050'),
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-      'process.env.REACT_APP_SUPABASE_URL': JSON.stringify(process.env.REACT_APP_SUPABASE_URL || 'https://ljsthabxoycpgizmpavx.supabase.co'),
-      'process.env.REACT_APP_SUPABASE_ANON_KEY': JSON.stringify(process.env.REACT_APP_SUPABASE_ANON_KEY),
-      'process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY': JSON.stringify(process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || ''),
+      'process': JSON.stringify({
+        env: {
+          REACT_APP_API_URL: process.env.REACT_APP_API_URL || 'http://localhost:5050',
+          NODE_ENV: process.env.NODE_ENV || 'development',
+          REACT_APP_SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL || 'https://ljsthabxoycpgizmpavx.supabase.co',
+          REACT_APP_SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY,
+          REACT_APP_SUPABASE_SERVICE_ROLE_KEY: process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || '',
+        }
+      }),
     }),
   ],
 }; 

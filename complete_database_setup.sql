@@ -242,6 +242,8 @@ CREATE INDEX IF NOT EXISTS idx_contacts_created_at ON contacts(created_at);
 -- =====================================================
 -- 8. ADD RLS (Row Level Security) POLICIES
 -- =====================================================
+
+-- Enable RLS on contacts table
 ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
 
 -- Policy to allow all operations for authenticated users (admin)
@@ -250,6 +252,28 @@ CREATE POLICY "Allow all operations for authenticated users" ON contacts
 
 -- Policy to allow insert for anonymous users (contact form submissions)
 CREATE POLICY "Allow insert for anonymous users" ON contacts
+    FOR INSERT WITH CHECK (true);
+
+-- Enable RLS on emergency_requests table
+ALTER TABLE emergency_requests ENABLE ROW LEVEL SECURITY;
+
+-- Policy to allow all operations for authenticated users (admin)
+CREATE POLICY "Allow all operations for authenticated users on emergency_requests" ON emergency_requests
+    FOR ALL USING (true);
+
+-- Policy to allow insert for anonymous users (emergency form submissions)
+CREATE POLICY "Allow insert for anonymous users on emergency_requests" ON emergency_requests
+    FOR INSERT WITH CHECK (true);
+
+-- Enable RLS on service_requests table
+ALTER TABLE service_requests ENABLE ROW LEVEL SECURITY;
+
+-- Policy to allow all operations for authenticated users (admin)
+CREATE POLICY "Allow all operations for authenticated users on service_requests" ON service_requests
+    FOR ALL USING (true);
+
+-- Policy to allow insert for anonymous users (service form submissions)
+CREATE POLICY "Allow insert for anonymous users on service_requests" ON service_requests
     FOR INSERT WITH CHECK (true);
 
 -- =====================================================

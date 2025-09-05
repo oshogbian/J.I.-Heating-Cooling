@@ -13,7 +13,7 @@ const firebaseConfig = {
   storageBucket: "jiheatingcooling.appspot.com", // Fixed this line - should be .appspot.com not .firebasestorage.app
   messagingSenderId: "563963975459",
   appId: "1:563963975459:web:bd2e909aac48236d1d5e96",
-  measurementId: "G-5165GSV8BZ"
+  measurementId: "G-5165GSV8BZ",
 };
 
 // Initialize Firebase

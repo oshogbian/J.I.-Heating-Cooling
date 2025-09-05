@@ -1,9 +1,9 @@
 // Configuration for different environments
 const config = {
   // Supabase configuration
-  SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL || 'https://ljsthabxoycpgizmpavx.supabase.co',
-  SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY || 'your_supabase_anon_key_here',
-  SUPABASE_SERVICE_ROLE_KEY: process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || 'your_supabase_service_role_key_here',
+  SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL || 'https://your-new-project-ref.supabase.co',
+  SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqc3RoYWJ4b3ljcGdpem1wYXZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMjY2ODUsImV4cCI6MjA2ODkwMjY4NX0.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8',
+  SUPABASE_SERVICE_ROLE_KEY: process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqc3RoYWJ4b3ljcGdpem1wYXZ4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzMyNjY4NSwiZXhwIjoyMDY4OTAyNjg1fQ.lFc_Zw631ki369yfucku2OZF0pcZ4RzyozImaXcnDOo',
   
   // Environment detection
   isDevelopment: process.env.NODE_ENV === 'development',
@@ -19,11 +19,6 @@ if (typeof window !== 'undefined') {
   const port = window.location.port;
   
   console.log('Frontend config - hostname:', hostname, 'port:', port);
-  console.log('Environment variables check:', {
-    SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL ? 'SET' : 'NOT SET',
-    SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
-    NODE_ENV: process.env.NODE_ENV
-  });
   
   // For custom domain (production)
   if (hostname === 'jiheatingandcooling.org' || hostname === 'www.jiheatingandcooling.org') {

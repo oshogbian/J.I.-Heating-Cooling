@@ -3,6 +3,7 @@ import { FaPlus, FaTrash, FaDownload, FaEye, FaEdit, FaSignOutAlt, FaPrint, FaLi
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
 import jsPDF from 'jspdf';
+import { errorReporter } from '../utils/errorReporting';
 
 function InvoiceGenerator() {
   const [invoices, setInvoices] = useState([]);
@@ -12,6 +13,14 @@ function InvoiceGenerator() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  // Service descriptions
+  const serviceDescriptions = {
+    'fan_coil': 'Fan Coil Services\n• Professional installation and maintenance\n• Air quality optimization\n• Emergency repairs and troubleshooting\n• System performance testing\n• Filter replacement and cleaning',
+    'heat_pump': 'Heat Pump Services\n• High-efficiency installation\n• Regular maintenance and optimization\n• Performance testing and calibration\n• Energy efficiency improvements\n• Emergency repair services',
+    'vent_cleaning': 'Ventilation Cleaning\n• Complete duct system cleaning\n• Air quality improvement\n• Mold and allergen removal\n• System sanitization\n• Performance restoration',
+    'custom': ''
+  };
 
   // Form state
   const [form, setForm] = useState({
@@ -23,7 +32,7 @@ function InvoiceGenerator() {
     tax_rate: 13,
     notes: '',
     payment_terms: 'Net 30',
-    items: [{ description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
+    items: [{ service_type: '', custom_service_name: '', description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
   });
 
   // Company info
@@ -118,8 +127,10 @@ function InvoiceGenerator() {
       }
       
       if (!response.ok) {
-        console.error('API error:', response.status, response.statusText);
-        setError(`API Error: ${response.status} ${response.statusText}`);
+        const errorMsg = `API Error: ${response.status} ${response.statusText}`;
+        console.error(errorMsg);
+        setError(errorMsg);
+        errorReporter.reportApiError(new Error(errorMsg), '/rest/v1/invoices', 'GET', response.status);
         return;
       }
       
@@ -144,6 +155,7 @@ function InvoiceGenerator() {
             return { ...invoice, items: items || [] };
           } catch (error) {
             console.error('Error fetching items for invoice:', invoice.id, error);
+            errorReporter.reportApiError(error, `/rest/v1/invoice_items?invoice_id=eq.${invoice.id}`, 'GET', 0);
             return { ...invoice, items: [] };
           }
         })
@@ -153,6 +165,7 @@ function InvoiceGenerator() {
     } catch (error) {
       console.error('Error fetching invoices:', error);
       setError('Network error');
+      errorReporter.reportApiError(error, '/rest/v1/invoices', 'GET', 0);
     } finally {
       setLoading(false);
     }
@@ -165,69 +178,26 @@ function InvoiceGenerator() {
   const handleItemChange = (index, field, value) => {
     const newItems = [...form.items];
     newItems[index][field] = value;
+    
+    // Auto-populate description when service type is selected
+    if (field === 'service_type' && value !== 'custom') {
+      newItems[index].description = serviceDescriptions[value] || '';
+    }
+    
     setForm({ ...form, items: newItems });
   };
 
-  // Helper function to convert plain text to bullet points
-  const formatBulletPoints = (text) => {
-    if (!text) return '';
-    
-    // Split by lines and add bullet points to non-empty lines
-    const lines = text.split('\n').filter(line => line.trim() !== '');
-    return lines.map(line => {
-      const trimmed = line.trim();
-      // If line doesn't start with a bullet point, add one
-      if (!trimmed.startsWith('•') && !trimmed.startsWith('-') && !trimmed.startsWith('*')) {
-        return `• ${trimmed}`;
-      }
-      return trimmed;
-    }).join('\n');
-  };
-
-  // Helper function to handle bullet point input
-  const handleBulletPointInput = (index, value) => {
+  // Helper function to handle description input
+  const handleDescriptionInput = (index, value) => {
     const newItems = [...form.items];
     newItems[index].description = value;
     setForm({ ...form, items: newItems });
   };
 
-  // Helper function to handle key press for automatic bullet point formatting
-  const handleDescriptionKeyPress = (index, e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const currentValue = form.items[index].description;
-      const cursorPosition = e.target.selectionStart;
-      const lines = currentValue.split('\n');
-      const currentLineIndex = currentValue.substring(0, cursorPosition).split('\n').length - 1;
-      
-      // Find the current line and check if it starts with a bullet point
-      const currentLine = lines[currentLineIndex] || '';
-      const trimmedLine = currentLine.trim();
-      
-      let newLine = '';
-      if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
-        // If current line has a bullet point, add a new bullet point
-        newLine = '• ';
-      } else if (trimmedLine.length > 0) {
-        // If current line has content but no bullet point, add one
-        newLine = '• ';
-      }
-      
-      const newValue = currentValue.substring(0, cursorPosition) + '\n' + newLine + currentValue.substring(cursorPosition);
-      handleBulletPointInput(index, newValue);
-      
-      // Set cursor position after the new bullet point
-      setTimeout(() => {
-        const newCursorPosition = cursorPosition + newLine.length + 1;
-        e.target.setSelectionRange(newCursorPosition, newCursorPosition);
-      }, 0);
-    }
-  };
-
   const addItem = () => {
     setForm({
       ...form,
-      items: [...form.items, { description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
+      items: [...form.items, { service_type: '', custom_service_name: '', description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
     });
   };
 
@@ -300,6 +270,7 @@ function InvoiceGenerator() {
                   'Authorization': `Bearer ${config.SUPABASE_SERVICE_ROLE_KEY}`
                 },
                 body: JSON.stringify({
+                  service_type: item.service_type || item.custom_service_name || '',
                   description: item.description,
                   quantity: item.quantity,
                   unit_price: item.unit_price,
@@ -317,6 +288,7 @@ function InvoiceGenerator() {
                 },
                 body: JSON.stringify({
                   invoice_id: editingInvoice.id,
+                  service_type: item.service_type || item.custom_service_name || '',
                   description: item.description,
                   quantity: item.quantity,
                   unit_price: item.unit_price,
@@ -356,13 +328,14 @@ function InvoiceGenerator() {
                 'apikey': config.SUPABASE_SERVICE_ROLE_KEY,
                 'Authorization': `Bearer ${config.SUPABASE_SERVICE_ROLE_KEY}`
               },
-              body: JSON.stringify({
-                invoice_id: newInvoice[0].id,
-                description: item.description,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-                total: item.quantity * item.unit_price
-              })
+                              body: JSON.stringify({
+                  invoice_id: newInvoice[0].id,
+                  service_type: item.service_type || item.custom_service_name || '',
+                  description: item.description,
+                  quantity: item.quantity,
+                  unit_price: item.unit_price,
+                  total: item.quantity * item.unit_price
+                })
             });
           }
         }
@@ -382,7 +355,7 @@ function InvoiceGenerator() {
         tax_rate: 13,
         notes: '',
         payment_terms: 'Net 30',
-        items: [{ description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
+        items: [{ service_type: '', custom_service_name: '', description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
       });
     } catch (error) {
       console.error('Error saving invoice:', error);
@@ -403,7 +376,7 @@ function InvoiceGenerator() {
       tax_rate: invoice.tax_rate || 13,
       notes: invoice.notes || '',
       payment_terms: invoice.payment_terms || 'Net 30',
-      items: invoice.items || [{ description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
+      items: invoice.items || [{ service_type: '', custom_service_name: '', description: '', quantity: 1, unit_price: 0, bullet_points: [] }]
     });
     setShowForm(true);
   };
@@ -590,41 +563,53 @@ function InvoiceGenerator() {
               border-collapse: collapse;
               margin-bottom: 30px;
               background: white;
-              border: 1px solid #ddd;
+              border: 2px solid #183153;
+              border-radius: 8px;
+              overflow: hidden;
             }
             
             .detail-item {
               text-align: center;
+              font-weight: 600;
             }
             
             .items-table thead {
-              background: #f8f8f8;
-              border-bottom: 2px solid #ddd;
+              background: linear-gradient(135deg, #183153, #1e40af);
+              color: white;
             }
             
             .items-table th {
-              padding: 12px 8px;
+              padding: 15px 12px;
               text-align: left;
               font-weight: bold;
-              font-size: 12px;
+              font-size: 13px;
               text-transform: uppercase;
-              color: #333;
+              color: white;
+              border-right: 1px solid rgba(255,255,255,0.2);
             }
             
             .items-table th:last-child {
               text-align: right;
+              border-right: none;
             }
             
             .items-table td {
-              padding: 12px 8px;
-              border-bottom: 1px solid #eee;
+              padding: 15px 12px;
+              border-bottom: 1px solid #e5e7eb;
+              border-right: 1px solid #e5e7eb;
               font-size: 12px;
-              line-height: 1.4;
+              line-height: 1.5;
+              vertical-align: top;
             }
             
             .items-table td:last-child {
               text-align: right;
               font-weight: bold;
+              border-right: none;
+            }
+            
+            .items-table tbody tr:hover {
+              background-color: #f8fafc;
             }
             
             /* Service/Product Details Table */
@@ -653,29 +638,39 @@ function InvoiceGenerator() {
             /* Totals Section */
             .totals-section {
               margin-left: auto;
-              width: 300px;
+              width: 320px;
               text-align: right;
+              background: linear-gradient(135deg, #f8fafc, #ffffff);
+              border: 2px solid #183153;
+              border-radius: 8px;
+              padding: 20px;
+              box-shadow: 0 4px 12px rgba(24, 49, 83, 0.1);
             }
             
             .total-row {
               display: flex;
               justify-content: space-between;
               margin: 8px 0;
-              padding: 4px 0;
+              padding: 8px 0;
               font-size: 14px;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            
+            .total-row:last-child {
+              border-bottom: none;
             }
             
             .total-row.tax {
-              color: #666;
-              border-bottom: 1px solid #eee;
-              padding-bottom: 8px;
+              color: #6b7280;
+              font-weight: 500;
             }
             
             .total-row.final-total {
               font-weight: bold;
               font-size: 18px;
-              color: #333;
-              border-top: 2px solid #333;
+              color: #183153;
+              border-top: 2px solid #183153;
+              border-bottom: none;
               padding-top: 12px;
               margin-top: 12px;
             }
@@ -845,7 +840,9 @@ function InvoiceGenerator() {
             <thead>
               <tr>
                 <th>Description</th>
+                <th>Qty</th>
                 <th>Unit Price</th>
+                <th>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -860,7 +857,9 @@ function InvoiceGenerator() {
                       <div class="description-intro">${introLine}</div>
                       ${bulletPoints.length > 0 ? `<div class="description-bullets">${bulletPoints.map(line => `• ${line.trim()}`).join('<br>')}</div>` : ''}
                     </td>
-                    <td>$${item.unit_price.toFixed(2)}</td>
+                    <td class="detail-item">${item.quantity}</td>
+                    <td class="detail-item">$${item.unit_price.toFixed(2)}</td>
+                    <td class="detail-item">$${(item.quantity * item.unit_price).toFixed(2)}</td>
                   </tr>
                 `;
               }).join('')}
@@ -869,6 +868,10 @@ function InvoiceGenerator() {
           
           <!-- Totals Section -->
           <div class="totals-section">
+            <div class="total-row">
+              <span>Subtotal:</span>
+              <span>$${invoice.subtotal.toFixed(2)}</span>
+            </div>
             <div class="total-row tax">
               <span>Tax (${invoice.tax_rate}%):</span>
               <span>$${invoice.tax_amount.toFixed(2)}</span>
@@ -911,9 +914,9 @@ function InvoiceGenerator() {
         format: 'a4'
       });
       
-      // Set initial position
-      let y = 25;
-      const margin = 25;
+      // Set initial position with optimized spacing
+      let y = 20;
+      const margin = 20;
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
@@ -921,194 +924,306 @@ function InvoiceGenerator() {
       const formatDescriptionForPDF = (description) => {
         if (!description) return '';
         
+        // Split by newlines and filter out empty lines
         const lines = description.split('\n').filter(line => line.trim() !== '');
-        return lines.map(line => {
+        
+        // Process each line to ensure proper bullet point formatting
+        const formattedLines = lines.map(line => {
           const trimmed = line.trim();
-          if (!trimmed.startsWith('•') && !trimmed.startsWith('-') && !trimmed.startsWith('*')) {
+          // Fix bullet point characters and ensure proper formatting
+          if (trimmed.includes('●') || trimmed.includes('•') || trimmed.includes('-') || trimmed.includes('*')) {
+            return trimmed.replace(/[●•]/g, '•'); // Normalize bullet points
+          } else if (trimmed.length > 0) {
             return `• ${trimmed}`;
           }
           return trimmed;
         });
+        
+        return formattedLines;
       };
       
-      // Add company logo to PDF
+      // Add company logo to PDF (smaller size)
       try {
         const logoUrl = '/logo.png';
-        pdf.addImage(logoUrl, 'PNG', margin, y - 12, 20, 20);
-        y += 28; // Move down to account for logo
+        pdf.addImage(logoUrl, 'PNG', margin, y - 8, 15, 15);
       } catch (error) {
         console.log('Logo not found, using text fallback');
-        // Draw a placeholder for the logo
+        // Draw a smaller placeholder for the logo
         pdf.setFillColor(24, 49, 83);
-        pdf.rect(margin, y - 12, 20, 20, 'F');
+        pdf.rect(margin, y - 8, 15, 15, 'F');
         pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(10);
+        pdf.setFontSize(8);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('JI', margin + 6, y - 2);
-        y += 28;
+        pdf.text('JI', margin + 4, y - 1);
       }
       
-      // Company header with enhanced styling
-      pdf.setFontSize(24);
+      // Company header beside logo with adjusted alignment
+      const logoHeight = 15;
+      const companyInfoHeight = 18; // Total height of company info
+      const startY = y - logoHeight/2 - companyInfoHeight/2 + 12; // Center relative to logo, moved down more
+      
+      pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(24, 49, 83); // Dark blue color
-      pdf.text(companyInfo.name, margin + 30, y);
-      y += 10;
+      pdf.text(companyInfo.name, margin + 20, startY);
       
-      pdf.setFontSize(9);
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(74, 85, 104); // Gray color
-      pdf.text(companyInfo.address, margin + 30, y);
-      y += 4;
-      pdf.text(`Phone: ${companyInfo.phone}`, margin + 30, y);
-      y += 4;
-      pdf.text(`Email: ${companyInfo.email}`, margin + 30, y);
-      y += 4;
-      pdf.text(`Website: ${companyInfo.website}`, margin + 30, y);
-      y += 15;
+      pdf.text(companyInfo.address, margin + 20, startY + 6);
+      pdf.text(`Phone: ${companyInfo.phone}`, margin + 20, startY + 9);
+      pdf.text(`Email: ${companyInfo.email}`, margin + 20, startY + 12);
+      pdf.text(`Website: ${companyInfo.website}`, margin + 20, startY + 15);
       
-      // Invoice title and number (right-aligned)
-      pdf.setFontSize(24);
+      y += 8;
+      
+      // Invoice title and number (right-aligned, compact)
+      pdf.setFontSize(20);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(24, 49, 83);
-      pdf.text('INVOICE', pageWidth - margin - 40, 30);
-      pdf.setFontSize(14);
+      pdf.text('INVOICE', pageWidth - margin - 35, 25);
+      pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(24, 49, 83);
-      pdf.text(`#${invoice.invoice_number}`, pageWidth - margin - 40, 42);
-      y += 25;
+      pdf.text(`#${invoice.invoice_number}`, pageWidth - margin - 35, 35);
+      y += 20;
       
-      // Customer information section
-      pdf.setFontSize(16);
+      // Customer information section (professional layout)
+      pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(24, 49, 83);
       pdf.text('Bill To:', margin, y);
-      y += 10;
-      
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(45, 55, 72);
-      pdf.text(invoice.customer_name, margin, y);
       y += 6;
-      pdf.text(invoice.customer_email, margin, y);
-      y += 6;
-      if (invoice.customer_phone) {
-        pdf.text(invoice.customer_phone, margin, y);
-        y += 6;
-      }
-      if (invoice.customer_address) {
-        pdf.text(invoice.customer_address, margin, y);
-        y += 6;
-      }
-      y += 10;
-      
-      // Invoice details
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Invoice Details:', pageWidth - margin - 50, y);
-      y += 8;
       
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Invoice Date: ${new Date(invoice.created_at).toLocaleDateString('en-CA')}`, pageWidth - margin - 50, y);
-      y += 5;
-      pdf.text(`Due Date: ${new Date(invoice.due_date).toLocaleDateString('en-CA')}`, pageWidth - margin - 50, y);
-      y += 5;
-      pdf.text(`Payment Terms: ${invoice.payment_terms}`, pageWidth - margin - 50, y);
-      y += 20;
+      pdf.setTextColor(45, 55, 72);
+      pdf.text(invoice.customer_name, margin, y);
+      y += 4;
+      pdf.text(invoice.customer_email, margin, y);
+      y += 4;
+      if (invoice.customer_phone) {
+        pdf.text(invoice.customer_phone, margin, y);
+        y += 4;
+      }
+      if (invoice.customer_address) {
+        pdf.text(invoice.customer_address, margin, y);
+        y += 4;
+      }
+      y += 6;
       
-      // Items table header
-      pdf.setFontSize(12);
+      // Invoice details (professional layout)
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Invoice Details:', pageWidth - margin - 45, y);
+      y += 6;
+      
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Invoice Date: ${new Date(invoice.created_at).toLocaleDateString('en-CA')}`, pageWidth - margin - 45, y);
+      y += 4;
+      pdf.text(`Due Date: ${new Date(invoice.due_date).toLocaleDateString('en-CA')}`, pageWidth - margin - 45, y);
+      y += 4;
+      pdf.text(`Payment Terms: ${invoice.payment_terms}`, pageWidth - margin - 45, y);
+      y += 12;
+      
+      // Items table header (clean)
+      pdf.setFontSize(11);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(24, 49, 83);
-      pdf.text('Description', margin, y);
-      pdf.text('Qty', margin + 85, y);
-      pdf.text('Unit Price', margin + 125, y);
-      pdf.text('Total', margin + 165, y);
-      y += 10;
       
-      // Draw line under header
-      pdf.setDrawColor(24, 49, 83);
-      pdf.setLineWidth(0.5);
-      pdf.line(margin, y, pageWidth - margin, y);
+      // Draw header background
+      pdf.setFillColor(240, 245, 250);
+      pdf.rect(margin, y - 6, pageWidth - (margin * 2), 10, 'F');
+      
+      // Header text with compact column positions
+      pdf.text('Description', margin, y);
+      pdf.setFontSize(10);
+      pdf.text('Qty', margin + 95, y);
+      pdf.text('Unit Price', margin + 125, y);
+      pdf.text('Total', margin + 160, y);
       y += 8;
       
-      // Items with enhanced styling
+      // Draw single line under header
+      pdf.setDrawColor(24, 49, 83);
+      pdf.setLineWidth(0.8);
+      pdf.line(margin, y, pageWidth - margin, y);
+      
+      // Store the starting Y position for table
+      const tableStartY = y;
+      
+      y += 6;
+      
+      // Items table with proper formatting
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(45, 55, 72);
+      
+      let tableEndY = tableStartY;
+      
       invoice.items.forEach((item) => {
-        if (y > pageHeight - 80) { // Check if we need a new page
+        // Check if we need a new page
+        if (y > pageHeight - 60) {
           pdf.addPage();
-          y = 25;
+          y = 20;
         }
         
         // Handle bullet points in description
         const descriptionLines = formatDescriptionForPDF(item.description);
         
+        // No top border for rows to avoid lines through content
+        
+        // Show service type first
+        const serviceType = item.service_type || item.custom_service_name || 'Service';
+        if (y > pageHeight - 40) {
+          pdf.addPage();
+          y = 25;
+        }
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(24, 49, 83);
+        pdf.text(serviceType, margin, y);
+        y += 6;
+        
+        // Process each line of the description
         descriptionLines.forEach((line, lineIndex) => {
-          if (y > pageHeight - 80) { // Check if we need a new page
+          // Check if we need a new page - allow more space for content
+          if (y > pageHeight - 40) {
             pdf.addPage();
             y = 25;
           }
           
-          // Only show quantity and price on first line
+          // Only show quantity and price on the first line
           if (lineIndex === 0) {
-            pdf.setFontSize(10);
-            pdf.text(line, margin, y);
-            pdf.text(item.quantity.toString(), margin + 85, y);
-            pdf.text(`$${item.unit_price.toFixed(2)}`, margin + 125, y);
-            pdf.text(`$${(item.quantity * item.unit_price).toFixed(2)}`, margin + 165, y);
+            pdf.setFontSize(9);
+            // Wrap long description text to fit in column
+            const maxDescWidth = 70; // Further reduced width to prevent overflow
+            const words = line.split(' ');
+            let currentLine = '';
+            let descLineCount = 0;
+            
+            for (let word of words) {
+              const testLine = currentLine + word + ' ';
+              if (pdf.getTextWidth(testLine) < maxDescWidth) {
+                currentLine = testLine;
+              } else {
+                if (descLineCount === 0) {
+                  // First line shows quantity and price
+                  pdf.text(currentLine.trim(), margin, y);
+                  pdf.setFontSize(8);
+                  pdf.text(item.quantity.toString(), margin + 95, y);
+                  pdf.text(`$${item.unit_price.toFixed(2)}`, margin + 125, y);
+                  pdf.text(`$${(item.quantity * item.unit_price).toFixed(2)}`, margin + 160, y);
+                } else {
+                  // Continuation lines - only show description, no other columns
+                  pdf.text(`  ${currentLine.trim()}`, margin, y);
+                }
+                y += 6;
+                currentLine = word + ' ';
+                descLineCount++;
+              }
+            }
+            
+            // Handle the last line
+            if (currentLine.trim()) {
+              if (descLineCount === 0) {
+                pdf.text(currentLine.trim(), margin, y);
+                pdf.setFontSize(8);
+                pdf.text(item.quantity.toString(), margin + 95, y);
+                pdf.text(`$${item.unit_price.toFixed(2)}`, margin + 125, y);
+                pdf.text(`$${(item.quantity * item.unit_price).toFixed(2)}`, margin + 160, y);
+              } else {
+                pdf.text(`  ${currentLine.trim()}`, margin, y);
+              }
+              y += 6;
+            }
           } else {
             // For continuation lines, only show the description with indentation
-            pdf.setFontSize(9);
-            pdf.text(`  ${line}`, margin, y);
+            pdf.setFontSize(8);
+            // Wrap long continuation lines too
+            const maxDescWidth = 70;
+            const words = line.split(' ');
+            let currentLine = '';
+            
+            for (let word of words) {
+              const testLine = currentLine + word + ' ';
+              if (pdf.getTextWidth(testLine) < maxDescWidth) {
+                currentLine = testLine;
+              } else {
+                pdf.text(`  ${currentLine.trim()}`, margin, y);
+                y += 6;
+                currentLine = word + ' ';
+              }
+            }
+            
+            if (currentLine.trim()) {
+              pdf.text(`  ${currentLine.trim()}`, margin, y);
+              y += 6;
+            }
           }
-          y += 7;
         });
         
-        // Add extra space after multi-line descriptions
-        if (descriptionLines.length > 1) {
-          y += 4;
-        }
+        // Draw bottom border for the row (only at the very bottom)
+        tableEndY = y + 1;
+        y += 6;
       });
       
-      y += 15;
+      // Draw vertical column separators that match the table height
+      pdf.setDrawColor(24, 49, 83);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin + 90, tableStartY - 8, margin + 90, tableEndY); // Qty column separator
+      pdf.line(margin + 120, tableStartY - 8, margin + 120, tableEndY); // Unit Price column separator
+      pdf.line(margin + 155, tableStartY - 8, margin + 155, tableEndY); // Total column separator
+      
+      // Draw bottom border for the entire table
+      pdf.setDrawColor(24, 49, 83);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, tableEndY, pageWidth - margin, tableEndY);
+      
+      y += 10;
+      
+      // Check if we need a new page for totals
+      if (y > pageHeight - 50) {
+        pdf.addPage();
+        y = 25;
+      }
       
       // Draw line before totals
       pdf.setDrawColor(30, 64, 175);
       pdf.line(margin, y, pageWidth - margin, y);
-      y += 10;
-      
-      // Financial Summary with enhanced styling
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(74, 85, 104);
-      pdf.text('Subtotal:', margin + 110, y);
-      pdf.text(`$${invoice.subtotal.toFixed(2)}`, margin + 165, y);
       y += 8;
       
-      pdf.text(`Tax (${invoice.tax_rate}%):`, margin + 110, y);
-      pdf.text(`$${invoice.tax_amount.toFixed(2)}`, margin + 165, y);
-      y += 12;
+      // Financial Summary aligned with table columns
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(74, 85, 104);
+      
+      pdf.text('Subtotal:', margin + 120, y);
+      pdf.text(`$${invoice.subtotal.toFixed(2)}`, margin + 155, y);
+      y += 6;
+      
+      pdf.text(`Tax (${invoice.tax_rate}%):`, margin + 120, y);
+      pdf.text(`$${invoice.tax_amount.toFixed(2)}`, margin + 155, y);
+      y += 8;
       
       // Final total with emphasis
-      pdf.setFontSize(14);
+      pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(30, 64, 175);
-      pdf.text('TOTAL:', margin + 110, y);
-      pdf.text(`$${invoice.total_amount.toFixed(2)}`, margin + 165, y);
-      y += 20;
+      pdf.text('TOTAL:', margin + 120, y);
+      pdf.text(`$${invoice.total_amount.toFixed(2)}`, margin + 155, y);
+      y += 15;
       
-      // Notes section with enhanced styling
+      // Notes section (compact)
       if (invoice.notes) {
-        pdf.setFontSize(11);
+        pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(30, 64, 175);
         pdf.text('Notes:', margin, y);
-        y += 10;
+        y += 8;
         
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(10);
+        pdf.setFontSize(9);
         pdf.setTextColor(74, 85, 104);
         
         // Simple text wrapping
@@ -1122,28 +1237,28 @@ function InvoiceGenerator() {
             line = testLine;
           } else {
             pdf.text(line, margin, y);
-            y += 5;
+            y += 4;
             line = word + ' ';
           }
         }
         if (line) {
           pdf.text(line, margin, y);
-          y += 10;
+          y += 8;
         }
       }
       
-      // Footer with enhanced styling
-      y += 15;
-      pdf.setFontSize(9);
+      // Footer (compact)
+      y += 10;
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(30, 64, 175);
       pdf.text(`Thank you for choosing ${companyInfo.name}!`, margin, y);
-      y += 6;
+      y += 5;
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
+      pdf.setFontSize(7);
       pdf.setTextColor(74, 85, 104);
       pdf.text(`For questions about this invoice, please contact us at ${companyInfo.phone}`, margin, y);
-      y += 6;
+      y += 5;
       pdf.text(`Website: ${companyInfo.website}`, margin, y);
       
       // Save the PDF with proper error handling
@@ -1168,6 +1283,7 @@ function InvoiceGenerator() {
       
     } catch (error) {
       console.error('Error generating PDF:', error);
+      errorReporter.reportPdfError(error, 'download-pdf');
       alert('Error generating PDF. Please try again.');
     }
   };
@@ -1237,7 +1353,7 @@ function InvoiceGenerator() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Customer Email *
+                  Email *
                 </label>
                 <input
                   name="customer_email"
@@ -1250,7 +1366,7 @@ function InvoiceGenerator() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Customer Phone
+                  Phone
                 </label>
                 <input
                   name="customer_phone"
@@ -1277,7 +1393,7 @@ function InvoiceGenerator() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Customer Address
+                Address
               </label>
               <textarea
                 name="customer_address"
@@ -1292,39 +1408,15 @@ function InvoiceGenerator() {
             <div>
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Invoice Items</h3>
               
-              {/* Enhanced Bullet Points Help Section */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h4 className="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                  <FaListUl /> Enhanced Description Features
+              {/* Description Help */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                  <FaListUl /> Description Tips
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h5 className="font-semibold text-blue-800 mb-2">Bullet Points Support</h5>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      <li>• Each line becomes a bullet point automatically</li>
-                      <li>• Press Enter to create new bullet points</li>
-                      <li>• Use • - * symbols for manual bullet points</li>
-                      <li>• Perfect for detailed service descriptions</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h5 className="font-semibold text-blue-800 mb-2">Professional Layout</h5>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      <li>• Enhanced typography and spacing</li>
-                      <li>• Professional color scheme</li>
-                      <li>• Improved visual hierarchy</li>
-                      <li>• Better PDF and print formatting</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <h4 className="text-sm font-semibold text-blue-900 mb-2">💡 Bullet Point Tips</h4>
                 <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Press <kbd className="bg-blue-200 px-1 rounded text-xs">Enter</kbd> to automatically add bullet points</li>
-                  <li>• Use • - * symbols for bullet points</li>
-                  <li>• Click "Format Bullet Points" to auto-format existing text</li>
-                  <li>• Perfect for detailed service descriptions with multiple components</li>
+                  <li>• Type • for bullet points</li>
+                  <li>• Use any format you prefer</li>
+                  <li>• Include details like parts, time, special notes</li>
                 </ul>
               </div>
               {form.items.map((item, index) => (
@@ -1332,30 +1424,56 @@ function InvoiceGenerator() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div className="md:col-span-2">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Service Type *
+                      </label>
+                      <input
+                        type="text"
+                        value={item.service_type === 'custom' ? item.custom_service_name || '' : item.service_type}
+                        onChange={(e) => {
+                          if (item.service_type === 'custom') {
+                            handleItemChange(index, 'custom_service_name', e.target.value);
+                          } else {
+                            handleItemChange(index, 'service_type', e.target.value);
+                          }
+                        }}
+                        placeholder="Enter service type (e.g., Fan Coil Installation, Heat Pump Repair)"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
+                      />
+                      
+                      <div className="mb-3">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Quick Select (Optional)
+                        </label>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleItemChange(index, 'service_type', e.target.value);
+                              handleItemChange(index, 'custom_service_name', '');
+                            }
+                          }}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">Or choose from common services...</option>
+                          <option value="Fan Coil Services">Fan Coil Services</option>
+                          <option value="Heat Pump Services">Heat Pump Services</option>
+                          <option value="Ventilation Cleaning">Ventilation Cleaning</option>
+                          <option value="Air Filter Replacement">Air Filter Replacement</option>
+                          <option value="System Maintenance">System Maintenance</option>
+                          <option value="Emergency Repair">Emergency Repair</option>
+                        </select>
+                      </div>
+                      
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Description *
                       </label>
-                      <div className="space-y-2">
-                        <textarea
-                          value={item.description}
-                          onChange={(e) => handleBulletPointInput(index, e.target.value)}
-                          onKeyDown={(e) => handleDescriptionKeyPress(index, e)}
-                          rows="4"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Enter description...&#10;• Use bullet points for multiple items&#10;• Press Enter for new lines&#10;• Example:&#10;• Fan coil installation&#10;• Air filter replacement&#10;• System testing"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleBulletPointInput(index, formatBulletPoints(item.description))}
-                            className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded transition-colors duration-200"
-                          >
-                            Format Bullet Points
-                          </button>
-                          <span className="text-xs text-gray-500">
-                            Tip: Use • - * for bullet points or let us format automatically
-                          </span>
-                        </div>
-                      </div>
+                      <textarea
+                        value={item.description}
+                        onChange={(e) => handleDescriptionInput(index, e.target.value)}
+                        rows="4"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter detailed service description...&#10;You can use bullet points (•) or any format you prefer&#10;Example:&#10;• Replaced fan coil unit&#10;• Installed new thermostat&#10;• Cleaned air ducts"
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1405,7 +1523,7 @@ function InvoiceGenerator() {
                 onClick={addItem}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-200 flex items-center gap-2"
               >
-                <FaPlus /> Add Item
+                <FaPlus /> Add Another Service
               </button>
             </div>
 
@@ -1428,7 +1546,7 @@ function InvoiceGenerator() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Payment Terms
+                  Terms
                 </label>
                 <select
                   name="payment_terms"
@@ -1436,9 +1554,9 @@ function InvoiceGenerator() {
                   onChange={handleFormChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="Net 30">Net 30</option>
-                  <option value="Net 15">Net 15</option>
                   <option value="Due on Receipt">Due on Receipt</option>
+                  <option value="Net 15">Net 15</option>
+                  <option value="Net 30">Net 30</option>
                 </select>
               </div>
             </div>
@@ -1451,15 +1569,15 @@ function InvoiceGenerator() {
                 name="notes"
                 value={form.notes}
                 onChange={handleFormChange}
-                rows="3"
+                rows="2"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Additional notes or terms..."
+                placeholder="Optional additional notes..."
               />
             </div>
 
             {/* Summary */}
-            <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-900 mb-4">Invoice Summary</h3>
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-900 mb-3">Summary</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>
@@ -1478,10 +1596,10 @@ function InvoiceGenerator() {
 
             <button
               type="submit"
-              disabled={loading || form.items.some(item => !item.description.trim())}
+              disabled={loading || form.items.some(item => (!item.service_type && !item.custom_service_name) || !item.description.trim())}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-3 px-6 rounded-lg font-semibold transition-colors duration-200"
             >
-              {loading ? 'Saving...' : (editingInvoice ? 'Update Invoice' : 'Create Invoice')}
+              {loading ? 'Saving...' : (editingInvoice ? 'Update' : 'Create Invoice')}
             </button>
           </form>
         </div>

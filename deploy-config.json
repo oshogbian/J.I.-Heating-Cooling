@@ -1,0 +1,38 @@
+{
+  "name": "ji-heating-backend",
+  "version": "1.0.0",
+  "description": "J.I. Heating & Cooling Backend API with Email Notifications",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "@supabase/supabase-js": "^2.52.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.5",
+    "pdfkit": "^0.15.0",
+    "pg": "^8.16.3",
+    "sequelize": "^6.37.1",
+    "sqlite3": "^5.1.7",
+    "@google-cloud/error-reporting": "^3.0.5"
+  },
+  "environment_variables": {
+    "REACT_APP_SUPABASE_URL": "https://ljsthabxoycpgizmpavx.supabase.co",
+    "REACT_APP_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqc3RoYWJ4b3ljcGdpem1wYXZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMjY2ODUsImV4cCI6MjA2ODkwMjY4NX0.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8",
+    "REACT_APP_SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqc3RoYWJ4b3ljcGdpem1wYXZ4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzMyNjY4NSwiZXhwIjoyMDY4OTAyNjg1fQ.lFc_Zw631ki369yfucku2OZF0pcZ4RzyozImaXcnDOo",
+    "PORT": "5050",
+    "EMAIL_HOST": "smtp.gmail.com",
+    "EMAIL_PORT": "587",
+    "EMAIL_USER": "sam@jiheatingandcooling.org",
+    "EMAIL_PASSWORD": "REPLACE_WITH_YOUR_GMAIL_APP_PASSWORD",
+    "COMPANY_EMAIL": "sam@jiheatingandcooling.org",
+    "GOOGLE_CLOUD_PROJECT_ID": "jiheatingcooling"
+  }
+}
